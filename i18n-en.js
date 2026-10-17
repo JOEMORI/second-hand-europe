@@ -142,7 +142,7 @@ export const EN = {
   '{0} 件新上架': '{0} new listings',
 
   // ---- 頁面上寫死的文字 ----
-  '二手器材搜尋': 'Gear Search',
+  '歐洲二手搜尋': 'Second Hand Europe',
   '搜尋結果': 'Search results',
   '分類瀏覽': 'Browse categories',
   '新上架': 'New listings',
@@ -168,7 +168,7 @@ export const EN = {
   '匯出備份': 'Export backup',
   '匯入備份': 'Import backup',
   '收藏、追蹤、快捷和設定都存成一個檔案，換電腦或重裝時可以還原。': 'Saved items, watches, quick searches and settings go into one file you can restore on another computer or after reinstalling.',
-  '搜尋器材，例如 Rolleiflex 2.8F': 'Search gear, e.g. Rolleiflex 2.8F',
+  '搜尋商品，例如 Rolleiflex 2.8F': 'Search anything, e.g. Rolleiflex 2.8F',
   '存成快捷': 'Save as quick search',
   '加入追蹤': 'Watch',
   '最新優先': 'Newest first',

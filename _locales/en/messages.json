@@ -1,11 +1,11 @@
 {
   "appName": {
-    "message": "Gear Search: second-hand camera & audio finder"
+    "message": "Second Hand Europe: one search across Europe's marketplaces"
   },
   "appShort": {
-    "message": "Gear Search"
+    "message": "Second Hand Europe"
   },
   "appDesc": {
-    "message": "Search second-hand camera and audio gear on marketplaces across Europe in one place, with new-listing alerts."
+    "message": "Search 17 second-hand marketplaces across Europe in one place, with prices in euros and new-listing alerts."
   }
 }
