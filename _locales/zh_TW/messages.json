@@ -1,0 +1,11 @@
+{
+  "appName": {
+    "message": "二手器材搜尋 Gear Search"
+  },
+  "appShort": {
+    "message": "二手器材搜尋"
+  },
+  "appDesc": {
+    "message": "一次搜尋歐洲各國二手平台（Vinted、eBay、Marktplaats、Kleinanzeigen、Subito、OLX、Blocket 等）的器材，有新上架就通知。"
+  }
+}

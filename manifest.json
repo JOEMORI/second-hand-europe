@@ -1,0 +1,69 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_appName__",
+  "short_name": "__MSG_appShort__",
+  "version": "1.3.0",
+  "description": "__MSG_appDesc__",
+  "default_locale": "en",
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "offscreen",
+    "scripting",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "host_permissions": [
+    "https://www.marktplaats.nl/*",
+    "https://www.2dehands.be/*",
+    "https://www.vinted.nl/*",
+    "https://www.kleinanzeigen.de/*",
+    "https://www.ebay.de/*",
+    "https://www.dba.dk/*",
+    "https://www.blocket.se/*",
+    "https://www.tori.fi/*",
+    "https://www.willhaben.at/*",
+    "https://www.olx.pl/*",
+    "https://www.olx.pt/*",
+    "https://www.olx.ro/*",
+    "https://www.olx.bg/*",
+    "https://www.bazos.cz/*",
+    "https://www.bazos.sk/*",
+    "https://hades.subito.it/*",
+    "https://api.frankfurter.dev/*",
+    "https://www.vatera.hu/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "__MSG_appShort__",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.vinted.nl/*",
+        "https://www.ebay.de/*",
+        "https://www.vatera.hu/*"
+      ],
+      "js": [
+        "frame-reader.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_end"
+    }
+  ]
+}

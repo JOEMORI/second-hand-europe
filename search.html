@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="zh-Hant" class="i18n-pending">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>二手器材搜尋</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></g></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke-linecap="round"/></g></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" fill="currentColor"/></symbol>
+    <symbol id="i-star-o" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z M10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></g></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4" y="5" width="4" height="4" rx="1"/><rect x="4" y="15" width="4" height="4" rx="1"/><path d="M11 7h9M11 17h9"/></g></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.1 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.1-3.6-8.5s1.2-6.2 3.6-8.5z"/></g></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 13h6l-1 8 8-10h-6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <!-- 分類圖示 -->
+    <symbol id="i-cat-film" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="9" width="25" height="17" rx="2.5"/><path d="M9 9l1.5-3h5L17 9"/><circle cx="16" cy="17.5" r="5"/><circle cx="16" cy="17.5" r="2"/><path d="M23.5 12.5h2"/></g></symbol>
+    <symbol id="i-cat-lens" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="16" cy="16" r="11.5"/><circle cx="16" cy="16" r="7"/><path d="M16 9l3 5.5M23 16l-6 0.5M16 23l-3-5.5M9 16l6-.5"/></g></symbol>
+    <symbol id="i-cat-mic" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="11.5" y="3.5" width="9" height="15" rx="4.5"/><path d="M7.5 15a8.5 8.5 0 0 0 17 0M16 23.5v5M11.5 28.5h9M11.5 9h3M11.5 13h3"/></g></symbol>
+    <symbol id="i-cat-rec" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="7.5" width="25" height="17" rx="2.5"/><circle cx="11" cy="15" r="3"/><circle cx="21" cy="15" r="3"/><path d="M11 18h10M8 24.5l2-3.5h12l2 3.5"/></g></symbol>
+    <symbol id="i-cat-hp" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M5.5 19v-3a10.5 10.5 0 0 1 21 0v3"/><rect x="4" y="18" width="6" height="9.5" rx="2.5"/><rect x="22" y="18" width="6" height="9.5" rx="2.5"/></g></symbol>
+    <symbol id="i-cat-naive" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M4.5 13.5L16 5l11.5 8.5"/><path d="M7.5 11.5V27h17V11.5"/><rect x="11" y="17" width="10" height="7" rx="1.2"/><circle cx="16" cy="20.5" r="1.8"/><path d="M13 17l1-1.6h4l1 1.6"/></g></symbol>
+    <symbol id="i-cat-custom" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4.5 15.5V5.5a1 1 0 0 1 1-1h10l12 12-11 11z"/><circle cx="10.5" cy="10.5" r="2.2"/></g></symbol>
+    <symbol id="i-plus" viewBox="0 0 32 32"><path d="M16 7v18M7 16h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z M13.5 6.5l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <!-- ========== 側欄 ========== -->
+  <aside class="side">
+    <div class="brand">
+      <img src="icon128.png" alt="" width="28" height="28">
+      <div>
+        <strong>二手器材搜尋</strong>
+        <small>歐洲各國二手平台</small>
+      </div>
+    </div>
+
+    <nav class="tabs">
+      <button data-tab="results" class="active"><svg class="ico"><use href="#i-search"/></svg>搜尋結果</button>
+      <button data-tab="browse"><svg class="ico"><use href="#i-grid"/></svg>分類瀏覽</button>
+      <button data-tab="new"><svg class="ico"><use href="#i-spark"/></svg>新上架<span id="newCount" class="count"></span></button>
+      <button data-tab="favs"><svg class="ico"><use href="#i-star-o"/></svg>收藏<span id="favCount" class="count muted"></span></button>
+      <button data-tab="watches"><svg class="ico"><use href="#i-eye"/></svg>追蹤清單</button>
+    </nav>
+
+    <div class="side-section">
+      <h3>平台</h3>
+      <div id="sourcePills" class="pills"></div>
+    </div>
+
+    <div class="side-section">
+      <h3>價格</h3>
+      <div class="pricerange">
+        <label><span>€</span><input id="min" type="number" min="0" placeholder="最低"></label>
+        <i>–</i>
+        <label><span>€</span><input id="max" type="number" min="0" placeholder="最高"></label>
+      </div>
+    </div>
+
+    <div class="side-section">
+      <h3>排除字詞</h3>
+      <input id="exclude" type="text" placeholder="strap, ankauf, defekt">
+      <p class="tiny">用逗號分隔，標題含這些字的會被隱藏</p>
+    </div>
+
+    <div class="side-section">
+      <h3>搜尋設定</h3>
+      <label class="switch"><input type="checkbox" id="strict" checked><span></span>標題須含關鍵字</label>
+      <label class="switch" title="Marktplaats、Kleinanzeigen 很多商品只能面交"><input type="checkbox" id="shipOnly"><span></span>隱藏只能面交</label>
+      <label class="switch" title="分類瀏覽一律只看二手"><input type="checkbox" id="usedOnly" checked><span></span>eBay 只看二手</label>
+      <label class="field" title="用這次搜尋結果的中位數價格當行情，低於行情這麼多就標記。搜得越精準（例如 Rolleiflex 2.8F）越準。">
+        <span>便宜標記</span>
+        <select id="dealThreshold">
+          <option value="0">關閉</option>
+          <option value="0.2">低於行情 20%</option>
+          <option value="0.3">低於行情 30%</option>
+          <option value="0.4">低於行情 40%</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="side-section">
+      <h3>備份</h3>
+      <div class="row-btns">
+        <button type="button" id="exportBtn" class="ghost small">匯出備份</button>
+        <button type="button" id="importBtn" class="ghost small">匯入備份</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+      <p class="tiny">收藏、追蹤、快捷和設定都存成一個檔案，換電腦或重裝時可以還原。</p>
+    </div>
+
+    <div class="side-section lang-section">
+      <label class="lang-label" for="langSel">
+        <svg class="ico"><use href="#i-globe"/></svg>
+        <span>語言 · Language</span>
+      </label>
+      <select id="langSel">
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+  </aside>
+
+  <!-- ========== 主區 ========== -->
+  <div class="main">
+    <header class="mainhead">
+      <form id="form" autocomplete="off">
+        <div class="searchbar">
+          <svg class="ico"><use href="#i-search"/></svg>
+          <input id="q" type="search" placeholder="搜尋器材，例如 Rolleiflex 2.8F" required>
+          <button type="submit" class="primary">搜尋</button>
+        </div>
+      </form>
+      <div class="quickrow">
+        <div id="quickList" class="chips"></div>
+        <div class="quick-actions">
+          <button type="button" id="saveQuick" class="ghost small"><svg class="ico"><use href="#i-bolt"/></svg>存成快捷</button>
+          <button type="button" id="watchBtn" class="ghost small"><svg class="ico"><use href="#i-bell"/></svg>加入追蹤</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- 搜尋結果 -->
+      <section id="tab-results">
+        <div class="toolbar sticky">
+          <div class="tb-row">
+            <div id="status" class="status"></div>
+            <div class="tools">
+              <div class="viewtoggle" role="group">
+                <button type="button" data-view="grid" title="格狀"><svg class="ico"><use href="#i-grid"/></svg></button>
+                <button type="button" data-view="list" title="列表"><svg class="ico"><use href="#i-list"/></svg></button>
+              </div>
+              <select id="sort">
+                <option value="new">最新優先</option>
+                <option value="deal">最便宜（相對行情）</option>
+                <option value="asc">價格低到高</option>
+                <option value="desc">價格高到低</option>
+              </select>
+            </div>
+          </div>
+          <div id="statusExtra" class="tb-extra"></div>
+          <div id="statusErr" class="tb-err" hidden></div>
+        </div>
+        <div id="links" class="links"></div>
+        <div id="results" class="grid"></div>
+        <div class="more">
+          <button type="button" id="more" class="ghost" hidden>載入更多</button>
+          <span id="moreLoading" class="loading-more" hidden>讀取中…</span>
+        </div>
+        <div id="emptyResults" class="empty">
+          <svg class="empty-ico"><use href="#i-search"/></svg>
+          <p>輸入關鍵字開始搜尋</p>
+          <p class="sub">左側可以選平台、設價格範圍；常用的搜尋可以存成快捷。</p>
+        </div>
+      </section>
+
+      <!-- 分類瀏覽 -->
+      <section id="tab-browse" hidden>
+        <div class="section-head">
+          <h2>分類瀏覽</h2>
+          <p>不用關鍵字，直接看各平台這個分類的最新上架。左側的平台、價格、排除字詞都會套用。沒有對應分類的平台會用當地語言的關鍵字搜尋。「素人賣家」用各國語言搜尋老相機、遺物、閣樓找到的這類標題，適合撿漏。</p>
+        </div>
+        <div id="catList" class="cats"></div>
+        <form id="catEditor" class="cat-editor" hidden>
+          <h3 id="ceTitle">新增分類</h3>
+          <label class="ce-field"><span>分類名稱</span><input type="text" id="ceName" maxlength="40" placeholder="例如：中片幅相機"></label>
+          <label class="ce-field"><span>關鍵字</span><input type="text" id="ceWords" placeholder="例如：rolleiflex, hasselblad, mamiya"><small>用逗號分隔，最多 8 個。每個關鍵字都會在左側勾選的平台搜尋，任何語言都可以。</small></label>
+          <label class="ce-field"><span>排除字詞</span><input type="text" id="ceExclude" placeholder="例如：strap, case, defekt"><small>標題含這些字的商品不顯示（選填）</small></label>
+          <div class="ce-actions">
+            <button type="submit" class="primary small">儲存並瀏覽</button>
+            <button type="button" id="ceCancel" class="ghost small">取消</button>
+            <span id="ceMsg" class="ce-msg"></span>
+            <button type="button" id="ceDelete" class="ghost small danger">刪除分類</button>
+          </div>
+        </form>
+        <div class="pricebar">
+          <span class="pb-label">價格</span>
+          <div id="pricePresets" class="seg"></div>
+          <div class="pb-custom pricerange">
+            <label><span>€</span><input id="bMin" type="number" min="0" placeholder="最低"></label>
+            <i>–</i>
+            <label><span>€</span><input id="bMax" type="number" min="0" placeholder="最高"></label>
+          </div>
+          <span class="pb-note">直接交給各平台篩選，每一頁都是這個價格區間的商品</span>
+        </div>
+        <div class="toolbar sticky">
+          <div class="tb-row">
+            <div id="bStatus" class="status"></div>
+            <div class="tools">
+              <button type="button" id="bWatch" class="ghost small" hidden><svg class="ico"><use href="#i-bell"/></svg>追蹤這個分類</button>
+              <div class="viewtoggle" role="group">
+                <button type="button" data-view="grid" title="格狀"><svg class="ico"><use href="#i-grid"/></svg></button>
+                <button type="button" data-view="list" title="列表"><svg class="ico"><use href="#i-list"/></svg></button>
+              </div>
+              <select id="bSort">
+                <option value="new">最新優先</option>
+                <option value="bargain">撿漏優先</option>
+                <option value="asc">價格低到高</option>
+                <option value="desc">價格高到低</option>
+              </select>
+            </div>
+          </div>
+          <div id="bStatusExtra" class="tb-extra"></div>
+          <div id="bStatusErr" class="tb-err" hidden></div>
+        </div>
+        <div id="bResults" class="grid"></div>
+        <div id="bEmpty" class="empty"><svg class="empty-ico"><use href="#i-grid"/></svg><p>選一個分類開始瀏覽</p></div>
+        <div class="more">
+          <button type="button" id="bMore" class="ghost" hidden>載入更多</button>
+          <span id="bMoreLoading" class="loading-more" hidden>讀取中…</span>
+        </div>
+      </section>
+
+      <!-- 新上架 -->
+      <section id="tab-new" hidden>
+        <div class="section-head row">
+          <div>
+            <h2>新上架</h2>
+            <p>加入追蹤之後才上架的商品會出現在這裡。</p>
+          </div>
+          <button id="clearNew" class="ghost small">清空</button>
+        </div>
+        <div id="newList" class="grid"></div>
+      </section>
+
+      <!-- 收藏 -->
+      <section id="tab-favs" hidden>
+        <div class="section-head row">
+          <div>
+            <h2>收藏</h2>
+            <p>點商品圖片右上角的星號加入收藏，可以寫備註方便比較。</p>
+          </div>
+          <select id="favSort">
+            <option value="time">最近加入</option>
+            <option value="asc">價格低到高</option>
+            <option value="desc">價格高到低</option>
+          </select>
+        </div>
+        <div id="favList" class="favlist"></div>
+      </section>
+
+      <!-- 追蹤 -->
+      <section id="tab-watches" hidden>
+        <div class="section-head row">
+          <div>
+            <h2>追蹤清單</h2>
+            <p>Chrome 開著時才會檢查。有新上架會跳出系統通知，工具列圖示也會顯示數字。</p>
+          </div>
+          <div class="tools">
+            <select id="interval">
+              <option value="15">每 15 分鐘</option>
+              <option value="30">每 30 分鐘</option>
+              <option value="60">每 1 小時</option>
+              <option value="180">每 3 小時</option>
+            </select>
+            <button id="checkNow" class="ghost small">立即檢查</button>
+          </div>
+        </div>
+        <div id="watchList"></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div id="preview" class="preview" hidden></div>
+
+<script type="module" src="search.js"></script>
+</body>
+</html>
