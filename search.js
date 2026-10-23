@@ -72,6 +72,9 @@ function showTab(name) {
   // 分類瀏覽有自己的價格列，側欄的價格只用在搜尋結果
   $('sidePrice').hidden = name === 'browse';
   setHome(name === 'results' && !state.query);
+  // 頂部搜尋框只在「搜尋結果」顯示這次搜尋的關鍵字；切到其他分頁時清空，回來時再放回去
+  if (name === 'results') { if (state.query && !state.query.v.multi) $('q').value = state.query.v.query || ''; }
+  else $('q').value = '';
   window.scrollTo({ top: 0 });
   if (name === 'new') renderNew(true);
   if (name === 'favs') { renderFavs(); maybeCheckFavs(); }
@@ -204,6 +207,7 @@ async function runSearch(override, { stay = false } = {}) {
   delete $('more').dataset.autoAt;
   if (!stay) showTab('results');
   setHome(false);
+  if (!v.multi) $('q').value = v.query;
   renderLinks(v.multi ? '' : v.query);
   state.query = { v, override };
   state.rawItems = [];
@@ -1700,8 +1704,8 @@ $('langSel').addEventListener('change', async e => {
   renderSourcePills();
   try {
     const last = JSON.parse(localStorage.getItem('lastForm') || 'null');
-    // 打開時不沿用上次的價格範圍，避免一打開就被價格限制住
-    if (last) fillForm({ ...last, min: '', max: '', sources: null });
+    // 打開時只沿用排除字詞等設定；關鍵字、分類和價格範圍不沿用，首頁的搜尋框保持空白
+    if (last) fillForm({ ...last, query: '', cat: '', min: '', max: '', sources: null });
   } catch {}
   renderPricePresets();
   state.lastPriceKey = `${$('min').value.trim()}|${$('max').value.trim()}`;
