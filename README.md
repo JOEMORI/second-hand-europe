@@ -11,7 +11,7 @@ A Chrome extension that brings Europe's second-hand marketplaces together in one
 | 地區 | 平台 |
 | --- | --- |
 | 跨國 | Vinted、eBay.de |
-| 荷蘭附近 | Marktplaats (NL)、2dehands (BE)、Kleinanzeigen (DE) |
+| 西歐 | Marktplaats (NL)、2dehands (BE)、Kleinanzeigen (DE) |
 | 北歐 | DBA (DK)、Blocket (SE)、Tori (FI) |
 | 中歐 | willhaben (AT)、OLX.pl (PL)、Bazos.cz (CZ)、Bazos.sk (SK)、Vatera (HU) |
 | 南歐 | Subito (IT)、OLX.pt (PT) |

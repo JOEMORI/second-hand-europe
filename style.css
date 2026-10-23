@@ -241,7 +241,9 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .empty .sub { font-size: 13px; color: var(--muted); font-weight: 400; }
 
 /* ---------- 商品卡 ---------- */
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px 16px; }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px 18px; }
+@media (min-width: 1800px) { .grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (max-width: 1180px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .card {
   display: flex; flex-direction: column; background: var(--panel);
   border-radius: var(--radius); overflow: hidden; color: inherit; text-decoration: none;
@@ -249,7 +251,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
   transition: transform .18s ease, box-shadow .18s ease;
 }
 .card:hover { transform: translateY(-3px); box-shadow: 0 0 0 1px var(--line-strong), var(--shadow); }
-.card .img { position: relative; aspect-ratio: 1 / 1; background: var(--sunken); overflow: hidden; }
+.card .img { position: relative; aspect-ratio: 4 / 3; background: var(--sunken); overflow: hidden; }
 .card .img img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .35s ease; }
 .card:hover .img img { transform: scale(1.035); }
 
@@ -280,11 +282,11 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .meta.q { color: var(--accent-ink); margin-top: 2px; }
 
 .badge-deal, .badge-muted {
-  position: absolute; left: 8px; bottom: 8px; font-size: 11px; font-weight: 700;
-  padding: 3px 9px; border-radius: 999px; letter-spacing: .02em;
+  font-size: 10.5px; font-weight: 700; line-height: 17px;
+  padding: 0 8px; border-radius: 999px; letter-spacing: .02em; white-space: nowrap;
 }
-.badge-deal { background: var(--accent); color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
-.badge-muted { background: rgba(20,20,20,.72); color: #eee; font-weight: 600; backdrop-filter: blur(4px); }
+.badge-deal { background: var(--accent); color: #fff; }
+.badge-muted { background: #3a3835; color: #eee; font-weight: 600; }
 .card.is-deal { box-shadow: 0 0 0 2px var(--accent), var(--shadow-sm); }
 .card.is-deal:hover { box-shadow: 0 0 0 2px var(--accent), var(--shadow); }
 
@@ -414,11 +416,13 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 
 /* ---------- 分類瀏覽的撿漏標示 ---------- */
 .badge-naive, .badge-soft {
-  position: absolute; left: 8px; bottom: 8px; font-size: 11px; font-weight: 700;
-  padding: 3px 9px; border-radius: 999px; letter-spacing: .02em;
+  font-size: 10.5px; font-weight: 700; line-height: 17px;
+  padding: 0 8px; border-radius: 999px; letter-spacing: .02em; white-space: nowrap;
 }
-.badge-naive { background: #fff7d6; color: #8a5a00; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
-.badge-soft { background: rgba(255,255,255,.9); color: #55524c; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.badge-naive { background: #fff7d6; color: #8a5a00; }
+.badge-soft { background: var(--sunken); color: var(--muted); font-weight: 600; }
+.pv-img > .badge-deal, .pv-img > .badge-muted, .pv-img > .badge-naive, .pv-img > .badge-soft { line-height: 20px; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.pv-img > .badge-soft { background: rgba(255,255,255,.92); color: #55524c; }
 .chip.flag-toggle { --c: var(--accent); }
 .chip.flag-toggle b { color: var(--accent); }
 .chip.flag-toggle.clue { --c: #c08a00; }
@@ -510,7 +514,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .grid.list .card .star { width: 26px; height: 26px; top: 5px; right: 5px; opacity: 1; transform: none; }
 .grid.list .card .star .ico { width: 14px; height: 14px; }
 .grid.list .card .body { padding: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.grid.list .card .body > .price, .grid.list .card .body > .total, .grid.list .card .body > .meta:not(.q) { display: none; }
+.grid.list .card .body > .price-row, .grid.list .card .body > .total, .grid.list .card .body > .meta:not(.q) { display: none; }
 .grid.list .card .title { -webkit-line-clamp: 2; font-size: 15px; font-weight: 500; line-height: 1.45; margin: 0; }
 .grid.list .card .list-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .grid.list .card .list-tags .src-inline { display: none; }
@@ -683,4 +687,101 @@ html.i18n-pending body { visibility: hidden; }
 @media (max-width: 720px) {
   .pk-body { grid-template-columns: 1fr; }
   .pk-list { border-right: 0; border-bottom: 1px solid var(--line); max-height: 40vh; }
+}
+
+/* ============================================================
+   v1.5.1：側欄設定面板、ⓘ 說明、照片為主的卡片、首頁
+   ============================================================ */
+/* 卡片文字區：價格和標記同一行，地點、時間、寄送一行 */
+.card .price-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
+.card .price-row .price { font-weight: 750; font-size: 16px; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.card .title { margin: 3px 0 2px; }
+.card .meta .pickup { color: color-mix(in srgb, var(--danger) 75%, var(--muted)); }
+.card .tag { font-size: 12px; padding: 3px 10px 3px 8px; }
+.card .tag i { width: 8px; height: 8px; }
+
+/* 側欄：設定鈕固定在最底下 */
+/* 側欄比視窗高時（例如英文介面）設定鈕也一直留在最底下 */
+.side-foot { margin-top: auto; position: sticky; bottom: 0; z-index: 2; background: var(--side); padding: 10px 0 12px; margin-bottom: -12px; }
+.side-gear {
+  flex: none; display: flex; align-items: center; gap: 10px; width: 100%;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text);
+  border-radius: 10px; padding: 10px 12px; min-height: 44px; font-size: 13px; text-align: left;
+  transition: border-color .12s, box-shadow .12s;
+}
+.side-gear .ico { color: var(--muted); }
+.side-gear small { margin-left: auto; font-size: 11px; line-height: 1.3; color: var(--faint); text-align: right; min-width: 0; }
+.side-gear:hover { border-color: var(--line-strong); }
+.side-gear[aria-expanded="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.settings-pop {
+  position: fixed; left: calc(var(--side-w) + 8px); bottom: 16px; z-index: 60; width: 360px;
+  background: var(--panel); color: var(--text); border-radius: 14px; padding: 16px 18px 14px;
+  box-shadow: 0 0 0 1px var(--line), 0 2px 6px rgba(30,25,15,.06), 0 18px 40px rgba(30,25,15,.16);
+  display: flex; flex-direction: column; gap: 4px; animation: pv-in .14s ease-out;
+}
+.settings-pop[hidden] { display: none; }
+.sp-head { display: flex; align-items: center; margin-bottom: 4px; }
+.sp-head h2 { margin: 0; font-size: 16px; flex: 1; }
+.sp-sec { display: flex; flex-direction: column; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); }
+.sp-sec:first-of-type { border-top: 0; padding-top: 4px; }
+.sp-sec h3 { margin: 0; font-size: 11px; font-weight: 700; color: var(--faint); letter-spacing: .1em; }
+.sp-row { display: flex; align-items: center; gap: 6px; font-size: 13px; min-height: 26px; }
+.sp-row h3 { font-size: 13px; font-weight: 400; color: var(--text); letter-spacing: 0; }
+.sp-row select { margin-left: auto; font-size: 13px; }
+.sp-col { display: flex; flex-direction: column; gap: 6px; }
+.sp-col input { width: 100%; font-size: 13px; }
+.sp-label { font-size: 13px; color: var(--text); }
+.sp-gap { flex: 1; }
+.settings-pop .lang-label { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 400; color: var(--text); letter-spacing: 0; }
+
+/* ⓘ 說明：滑過、鍵盤移到或點一下才顯示 */
+.ibtn {
+  position: relative; display: inline-grid; place-items: center; flex: none; vertical-align: middle;
+  width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--faint);
+  font-size: 12.5px; font-weight: 400; letter-spacing: 0; line-height: 1.6; cursor: help;
+}
+.ibtn > .ico { width: 15px; height: 15px; }
+.ibtn:hover, .ibtn:focus-visible, .ibtn.open { color: var(--text); background: color-mix(in srgb, var(--text) 7%, transparent); }
+.ibtn .tip {
+  display: none; position: absolute; top: calc(100% + 8px); left: -10px; z-index: 70; width: 300px;
+  background: #1b1a18; color: #f5f3ef; border-radius: 10px; padding: 10px 13px;
+  text-align: left; white-space: normal; box-shadow: 0 10px 28px rgba(30,25,15,.22); pointer-events: none;
+}
+.ibtn.up .tip { top: auto; bottom: calc(100% + 8px); }
+.ibtn.right .tip { left: auto; right: -10px; }
+.ibtn.wide .tip { width: 420px; }
+.ibtn:hover .tip, .ibtn:focus-visible .tip, .ibtn.open .tip { display: block; }
+@media (prefers-color-scheme: dark) { .ibtn .tip { background: #edebe6; color: #1b1a18; } }
+.hwi { display: flex; align-items: center; gap: 6px; }
+.notify-box .ibtn { margin-left: auto; }
+
+/* 首頁：還沒搜尋時，搜尋框置中放大，下面是快捷和追蹤的新上架 */
+.home { display: none; }
+body.is-home #tab-results > :not(#home) { display: none !important; }
+body.is-home #home { display: block; }
+body.is-home .mainhead {
+  position: static; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: 0;
+  padding: 11vh 32px 8px; display: flex; flex-direction: column; align-items: center;
+}
+body.is-home #form { width: 100%; max-width: 760px; }
+body.is-home .searchbar { max-width: none; padding: 8px 8px 8px 22px; border-radius: 16px; box-shadow: var(--shadow); }
+body.is-home .searchbar > .ico { width: 20px; height: 20px; }
+body.is-home .searchbar input { font-size: 18px; padding: 10px 0; }
+body.is-home .searchbar .primary { padding: 11px 28px; font-size: 15px; }
+body.is-home .quickrow { width: 100%; max-width: 760px; justify-content: center; margin-top: 16px; }
+body.is-home .quick-actions { display: none; }
+body.is-home #quickList { justify-content: center; }
+.home { margin: 40px auto 0; max-width: 1240px; }
+.home-head { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.home-head h2 { margin: 0; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+.home-head .count { margin: 0; }
+.home-empty { padding: 40px 20px; }
+
+@media (max-width: 900px) {
+  .side-foot { grid-column: 1 / -1; margin: 0; position: static; padding: 0; }
+  .settings-pop { left: 16px; right: 16px; bottom: 16px; width: auto; }
+  .ibtn .tip { width: min(300px, 80vw); }
+  .ibtn.wide .tip { width: min(420px, 86vw); }
+  body.is-home .mainhead { padding: 24px 16px 8px; }
 }

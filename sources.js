@@ -15,10 +15,10 @@ const ICONED = new Set(['film', 'lens', 'mic', 'rec', 'hp', 'cloth', 'naive']);
 const MP = 'https://www.marktplaats.nl', TDH = 'https://www.2dehands.be';
 
 // ---------- 地區與國家 ----------
-// 平台選單依地區分組；目前人在荷蘭，所以鄰近國家排前面
+// 平台選單依地區分組；西歐（荷蘭、比利時、德國、法國）排前面
 export const REGIONS = [
   { key: 'multi', name: '跨國平台' },
-  { key: 'near', name: '鄰近國家' },
+  { key: 'near', name: '西歐' },
   { key: 'nordic', name: '北歐' },
   { key: 'central', name: '中歐' },
   { key: 'south', name: '南歐' },

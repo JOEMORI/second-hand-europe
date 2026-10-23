@@ -20,6 +20,8 @@
     <symbol id="i-list" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4" y="5" width="4" height="4" rx="1"/><rect x="4" y="15" width="4" height="4" rx="1"/><path d="M11 7h9M11 17h9"/></g></symbol>
     <symbol id="i-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.1 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.1-3.6-8.5s1.2-6.2 3.6-8.5z"/></g></symbol>
     <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 13h6l-1 8 8-10h-6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.4"/></g></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></g></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
     <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <!-- 分類圖示 -->
@@ -74,49 +76,60 @@
       </div>
     </div>
 
-    <div class="side-section">
-      <h3>排除字詞</h3>
-      <input id="exclude" type="text" placeholder="strap, ankauf, defekt">
-      <p class="tiny">用逗號分隔，標題含這些字的會被隱藏</p>
+    <div class="side-foot">
+      <button type="button" id="settingsBtn" class="side-gear" aria-haspopup="dialog" aria-expanded="false" aria-controls="settingsPanel">
+        <svg class="ico"><use href="#i-gear"/></svg>
+        <span class="sg-label">設定</span>
+        <small>搜尋・備份・語言</small>
+      </button>
     </div>
+  </aside>
 
-    <div class="side-section">
+  <!-- ========== 設定面板（側欄最底下的齒輪） ========== -->
+  <section id="settingsPanel" class="settings-pop" role="dialog" aria-labelledby="setTitle" hidden>
+    <div class="sp-head">
+      <h2 id="setTitle">設定</h2>
+      <button type="button" id="settingsClose" class="pk-close" aria-label="關閉"><svg class="ico"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="sp-sec">
       <h3>搜尋設定</h3>
-      <label class="switch"><input type="checkbox" id="strict" checked><span></span>標題須含關鍵字</label>
-      <label class="switch" title="Marktplaats、Kleinanzeigen 很多商品只能面交"><input type="checkbox" id="shipOnly"><span></span>隱藏只能面交</label>
-      <label class="switch" title="分類瀏覽一律只看二手"><input type="checkbox" id="usedOnly" checked><span></span>eBay 只看二手</label>
-      <label class="field" title="用這次搜尋結果的中位數價格當行情，低於行情這麼多就標記。搜得越精準（例如 Rolleiflex 2.8F）越準。">
-        <span>便宜標記</span>
+      <div class="sp-row"><label class="switch"><input type="checkbox" id="strict" checked><span></span>標題須含關鍵字</label></div>
+      <div class="sp-row"><label class="switch"><input type="checkbox" id="shipOnly"><span></span>隱藏只能面交</label><button type="button" class="ibtn up" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">Marktplaats、Kleinanzeigen 很多商品只能面交</span></button></div>
+      <div class="sp-row"><label class="switch"><input type="checkbox" id="usedOnly" checked><span></span>eBay 只看二手</label><button type="button" class="ibtn up" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">分類瀏覽一律只看二手</span></button></div>
+      <div class="sp-row">
+        <label class="sp-label" for="dealThreshold">便宜標記</label><button type="button" class="ibtn up" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">用這次搜尋結果的中位數價格當行情，低於行情這麼多就標記。搜得越精準（例如 Rolleiflex 2.8F）越準。</span></button>
         <select id="dealThreshold">
           <option value="0">關閉</option>
           <option value="0.2">低於行情 20%</option>
           <option value="0.3">低於行情 30%</option>
           <option value="0.4">低於行情 40%</option>
         </select>
-      </label>
+      </div>
+      <div class="sp-col">
+        <div class="sp-row"><label class="sp-label" for="exclude">排除字詞</label><button type="button" class="ibtn up" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">用逗號分隔，標題含這些字的會被隱藏</span></button></div>
+        <input id="exclude" type="text" placeholder="strap, ankauf, defekt">
+      </div>
     </div>
-
-    <div class="side-section">
-      <h3>備份</h3>
-      <div class="row-btns">
+    <div class="sp-sec">
+      <div class="sp-row">
+        <h3>備份</h3><button type="button" class="ibtn up" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">收藏、追蹤、快捷和設定都存成一個檔案，換電腦或重裝時可以還原。</span></button>
+        <span class="sp-gap"></span>
         <button type="button" id="exportBtn" class="ghost small">匯出備份</button>
         <button type="button" id="importBtn" class="ghost small">匯入備份</button>
         <input type="file" id="importFile" accept="application/json,.json" hidden>
       </div>
-      <p class="tiny">收藏、追蹤、快捷和設定都存成一個檔案，換電腦或重裝時可以還原。</p>
     </div>
-
-    <div class="side-section lang-section">
-      <label class="lang-label" for="langSel">
-        <svg class="ico"><use href="#i-globe"/></svg>
-        <span>語言 · Language</span>
-      </label>
-      <select id="langSel">
-        <option value="zh">中文</option>
-        <option value="en">English</option>
-      </select>
+    <div class="sp-sec">
+      <div class="sp-row">
+        <label class="sp-label lang-label" for="langSel"><svg class="ico"><use href="#i-globe"/></svg><span>語言 · Language</span></label>
+        <span class="sp-gap"></span>
+        <select id="langSel">
+          <option value="zh">中文</option>
+          <option value="en">English</option>
+        </select>
+      </div>
     </div>
-  </aside>
+  </section>
 
   <!-- ========== 主區 ========== -->
   <div class="main">
@@ -166,10 +179,15 @@
           <button type="button" id="more" class="ghost" hidden>載入更多</button>
           <span id="moreLoading" class="loading-more" hidden>讀取中…</span>
         </div>
-        <div id="emptyResults" class="empty">
-          <svg class="empty-ico"><use href="#i-search"/></svg>
-          <p>輸入關鍵字開始搜尋</p>
-          <p class="sub">左側可以選平台、設價格範圍；常用的搜尋可以存成快捷。</p>
+        <div id="emptyResults" class="empty" hidden></div>
+        <div id="home" class="home">
+          <div class="home-head">
+            <h2>追蹤的新上架<span id="homeCount" class="count"></span></h2>
+            <span class="sp-gap"></span>
+            <button type="button" id="homeAll" class="linkbtn">查看全部 →</button>
+          </div>
+          <div id="homeList" class="grid"></div>
+          <div id="homeEmpty" class="empty home-empty" hidden></div>
         </div>
       </section>
 
@@ -190,8 +208,8 @@
       </dialog>
       <section id="tab-browse" hidden>
         <div class="section-head">
-          <h2>分類瀏覽</h2>
-          <p>不用關鍵字，直接看各平台這個分類的最新上架。「我的分類」是你自己挑的，從分類目錄加入、不要的按 × 移除；目錄裡的分類會對應到各平台自己的分類，沒有對應分類的平台用當地語言的關鍵字搜尋。選了分類後也可以在分類裡搜尋品牌或型號。價格用下面的價格列設定（跟搜尋結果的價格分開）。</p>
+          <h2 class="hwi">分類瀏覽<button type="button" class="ibtn" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">不用關鍵字，直接看各平台這個分類的最新上架。「我的分類」是你自己挑的，從分類目錄加入、不要的按 × 移除；目錄裡的分類會對應到各平台自己的分類，沒有對應分類的平台用當地語言的關鍵字搜尋。選了分類後也可以在分類裡搜尋品牌或型號。價格用下面的價格列設定（跟搜尋結果的價格分開）。</span></button></h2>
+          
         </div>
         <div id="catList" class="cats"></div>
         <form id="catEditor" class="cat-editor" hidden>
@@ -220,7 +238,7 @@
             <i>–</i>
             <label><span>€</span><input id="bMax" type="number" min="0" placeholder="最高"></label>
           </div>
-          <span class="pb-note">只套用在分類瀏覽，直接交給各平台篩選</span>
+          <button type="button" class="ibtn" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">只套用在分類瀏覽，直接交給各平台篩選</span></button>
         </div>
         <div class="toolbar sticky">
           <div class="tb-row">
@@ -254,8 +272,7 @@
       <section id="tab-new" hidden>
         <div class="section-head row">
           <div>
-            <h2>新上架</h2>
-            <p>加入追蹤之後才上架的商品會出現在這裡。</p>
+            <h2 class="hwi">新上架<button type="button" class="ibtn" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">加入追蹤之後才上架的商品會出現在這裡。</span></button></h2>
           </div>
           <div class="head-tools">
             <div class="viewtoggle" role="group">
@@ -272,8 +289,7 @@
       <section id="tab-favs" hidden>
         <div class="section-head row">
           <div>
-            <h2>收藏</h2>
-            <p>點商品圖片右上角的星號加入收藏，可以寫備註方便比較。</p>
+            <h2 class="hwi">收藏<button type="button" class="ibtn" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">點商品圖片右上角的星號加入收藏，可以寫備註方便比較。</span></button></h2>
           </div>
           <div class="head-tools">
           <div class="viewtoggle" role="group" data-scope="favs">
@@ -288,7 +304,7 @@
           </div>
         </div>
         <div class="fav-tools">
-          <label class="switch" title="定時檢查收藏的商品，已賣掉或下架的會自動移出收藏"><input type="checkbox" id="favAuto" checked><span></span>自動移除已下架的收藏</label>
+          <label class="switch"><input type="checkbox" id="favAuto" checked><span></span>自動移除已下架的收藏</label><button type="button" class="ibtn" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">定時檢查收藏的商品，已賣掉或下架的會自動移出收藏</span></button>
           <button type="button" id="favCheck" class="ghost small">立即檢查</button>
           <span id="favCheckStatus" class="muted" role="status"></span>
         </div>
@@ -304,8 +320,7 @@
       <section id="tab-watches" hidden>
         <div class="section-head row">
           <div>
-            <h2>追蹤清單</h2>
-            <p>Chrome 開著時才會檢查（視窗縮小也可以）。有新上架會跳出系統通知，工具列圖示也會顯示數字。</p>
+            <h2 class="hwi">追蹤清單<button type="button" class="ibtn" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">Chrome 開著時才會檢查（視窗縮小也可以）。有新上架會跳出系統通知，工具列圖示也會顯示數字。</span></button></h2>
           </div>
           <div class="tools">
             <select id="interval">
@@ -327,7 +342,7 @@
           <label class="switch" title="只有關鍵字追蹤會判斷行情；分類追蹤的商品型號混雜，不會判斷"><input type="checkbox" id="notifyDealsOnly"><span></span>只通知低於行情的</label>
           <button type="button" id="notifyTest" class="ghost small">傳一則測試通知</button>
           <span id="notifyMsg" class="muted" role="status"></span>
-          <p class="tiny">每件新商品一則通知：標題是價格和平台，內文是商品名稱，小圖是商品照片（讀不到照片時用插件圖示），點了直接打開商品頁；超過 3 件時其餘併成一則彙總，點彙總打開「新上架」。「只通知低於行情的」只對關鍵字追蹤有效。只要 Chrome 沒有完全結束（視窗縮小或關掉都可以）就會檢查。<br>按了測試卻沒看到通知：到 Mac 的「系統設定 → 通知 → Google Chrome」打開「允許通知」，樣式選「提示」，通知就會停在畫面上。</p>
+          <button type="button" class="ibtn wide right" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">每件新商品一則通知：標題是價格和平台，內文是商品名稱，小圖是商品照片（讀不到照片時用插件圖示），點了直接打開商品頁；超過 3 件時其餘併成一則彙總，點彙總打開「新上架」。「只通知低於行情的」只對關鍵字追蹤有效。只要 Chrome 沒有完全結束（視窗縮小或關掉都可以）就會檢查。<br><br>按了測試卻沒看到通知：到 Mac 的「系統設定 → 通知 → Google Chrome」打開「允許通知」，樣式選「提示」，通知就會停在畫面上。</span></button>
         </div>
         <div id="watchList"></div>
       </section>

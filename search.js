@@ -71,6 +71,7 @@ function showTab(name) {
   ['results', 'browse', 'new', 'favs', 'watches'].forEach(t => { $('tab-' + t).hidden = t !== name; });
   // 分類瀏覽有自己的價格列，側欄的價格只用在搜尋結果
   $('sidePrice').hidden = name === 'browse';
+  setHome(name === 'results' && !state.query);
   window.scrollTo({ top: 0 });
   if (name === 'new') renderNew(true);
   if (name === 'favs') { renderFavs(); maybeCheckFavs(); }
@@ -202,6 +203,7 @@ async function runSearch(override, { stay = false } = {}) {
   $('moreLoading').hidden = true;
   delete $('more').dataset.autoAt;
   if (!stay) showTab('results');
+  setHome(false);
   renderLinks(v.multi ? '' : v.query);
   state.query = { v, override };
   state.rawItems = [];
@@ -439,10 +441,10 @@ function card(it, opts = {}) {
       it.image ? el('img', { src: it.image, loading: 'lazy', alt: '', referrerpolicy: 'no-referrer' }) : null,
       el('span', { class: 'tag', style: `--c:${colorOf(it.source)}` }, el('i'), it.source),
       star,
-      badge,
     ),
     el('div', { class: 'body' },
-      el('div', { class: 'price' }, it.priceLabel),
+      // 價格和標記同一行；總價或當地價格一行小字
+      el('div', { class: 'price-row' }, el('span', { class: 'price' }, it.priceLabel), badge),
       it.total != null ? el('div', { class: 'total', title: it.totalNote || '' }, T`總價約 € ${fmt(it.total)}`) : null,
       it.localLabel ? el('div', { class: 'total', title: T`依歐洲央行匯率換算` }, T`當地價格 ${it.localLabel}`) : null,
       el('div', { class: 'title' }, it.title),
@@ -453,8 +455,9 @@ function card(it, opts = {}) {
         meta ? el('span', { class: 'li-meta' }, meta) : null,
         it.extra ? el('span', { class: 'li-meta' + (it.shipping === 'no' ? ' pickup' : '') }, it.extra) : null,
       ),
-      meta ? el('div', { class: 'meta' }, meta) : null,
-      it.extra ? el('div', { class: 'meta extra' + (it.shipping === 'no' ? ' pickup' : '') }, it.extra) : null,
+      // 地點、上架時間、可否寄送放同一行
+      meta || it.extra ? el('div', { class: 'meta' }, meta || null, meta && it.extra ? ' · ' : null,
+        it.extra ? el('span', { class: it.shipping === 'no' ? 'pickup' : '' }, it.extra) : null) : null,
       opts.matched ? el('div', { class: 'meta q' }, T`字詞：${opts.matched}`) : null,
       opts.query ? el('div', { class: 'meta q' }, T`追蹤：${opts.query}`) : null,
       opts.note ? el('div', { class: 'note-line' }, T`備註：${opts.note}`) : null,
@@ -1477,7 +1480,7 @@ $('notifyTest').addEventListener('click', async () => {
   let r = null;
   try { r = await chrome.runtime.sendMessage({ type: 'testNotify' }); } catch {}
   if (r?.level && r.level !== 'granted') msg.textContent = T`Chrome 擋住了這個插件的通知，請到 chrome://settings/content/notifications 允許`;
-  else if (r?.id) msg.textContent = T`已送出。沒看到的話，請照下面的說明打開 Mac 的通知設定`;
+  else if (r?.id) msg.textContent = T`已送出。沒看到的話，請看右邊 ⓘ 裡打開 Mac 通知的說明`;
   else msg.textContent = T`送不出通知：${r?.error || ''}`;
 });
 
@@ -1505,6 +1508,7 @@ async function renderNew(markViewed) {
   } else {
     $('newList').replaceChildren(...newItems.map(i => card(i, { query: i.query, matched: i.matchedQuery })));
   }
+  renderHome(newItems, unseen);
   if (markViewed && unseen) {
     await store.set({ newItems: newItems.map(i => ({ ...i, viewed: true })) });
     chrome.action.setBadgeText({ text: '' });
@@ -1535,6 +1539,63 @@ chrome.storage.onChanged.addListener(c => {
   }
   if (c.favRemoved && !$('tab-favs').hidden) renderRemoved();
 });
+
+// ---------- 首頁：還沒搜尋時顯示大搜尋框、快捷和追蹤的新上架 ----------
+function setHome(on) {
+  document.body.classList.toggle('is-home', !!on);
+}
+async function renderHome(newItems, unseen) {
+  if (!newItems) {
+    ({ newItems = [] } = await store.get('newItems'));
+    unseen = newItems.filter(i => !i.viewed).length;
+  }
+  $('homeCount').textContent = unseen || '';
+  const shown = newItems.slice(0, 8);
+  $('homeList').replaceChildren(...shown.map(i => card(i, { query: i.query, matched: i.matchedQuery })));
+  $('homeAll').hidden = !newItems.length;
+  const empty = $('homeEmpty');
+  empty.hidden = !!newItems.length;
+  if (!newItems.length) {
+    const { watches = [] } = await store.get('watches');
+    empty.replaceChildren(
+      el('p', {}, watches.length ? T`追蹤的項目還沒有新上架` : T`還沒有追蹤項目`),
+      el('p', { class: 'sub' }, watches.length ? T`有新上架時會出現在這裡。` : T`搜尋後按「加入追蹤」，之後新上架的商品會出現在這裡。`));
+  }
+}
+$('homeAll').addEventListener('click', () => showTab('new'));
+
+// ---------- 設定面板（側欄最底下的齒輪） ----------
+function setSettings(open) {
+  $('settingsPanel').hidden = !open;
+  $('settingsBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) $('settingsPanel').querySelector('input, select, button:not(.ibtn)')?.focus();
+}
+$('settingsBtn').addEventListener('click', () => setSettings($('settingsPanel').hidden));
+$('settingsClose').addEventListener('click', () => { setSettings(false); $('settingsBtn').focus(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (document.querySelector('.ibtn.open')) { closeInfos(); return; }
+  if (!$('settingsPanel').hidden) { setSettings(false); $('settingsBtn').focus(); }
+});
+// 點面板外面就關閉（點選檔案的對話框不算）
+document.addEventListener('mousedown', e => {
+  if ($('settingsPanel').hidden) return;
+  if (e.target.closest('#settingsPanel, #settingsBtn')) return;
+  setSettings(false);
+});
+
+// ---------- ⓘ 說明：滑鼠滑過或鍵盤移到時顯示；觸控螢幕點一下打開、再點一下關閉 ----------
+function closeInfos(except) {
+  document.querySelectorAll('.ibtn.open').forEach(b => { if (b !== except) b.classList.remove('open'); });
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('.ibtn');
+  closeInfos(b);
+  if (!b) return;
+  e.preventDefault();
+  e.stopPropagation();
+  b.classList.toggle('open');
+}, true);
 
 // ---------- 備份 ----------
 const BACKUP_KEYS = ['favorites', 'watches', 'quick', 'customCats', 'myCats', 'selectedSources', 'dealThreshold', 'interval', 'lang', 'usedOnly', 'shipOnly', 'newItems', 'favRemoved', 'favAutoRemove', 'notifyOn', 'notifySticky', 'notifyMode', 'notifyDealsOnly', 'viewMode', 'favView'];
@@ -1620,6 +1681,7 @@ $('langSel').addEventListener('change', async e => {
     state.myCats = next;
     if (JSON.stringify(next) !== JSON.stringify(myCats)) await store.set({ myCats: next });
   }
+  setHome(!state.query && !$('tab-results').hidden);
   applyView(viewMode === 'list' ? 'list' : 'grid');
   applyFavView(favView === 'grid' ? 'grid' : 'list');
   // 工具列固定在搜尋框下方：量出搜尋框區塊的高度

@@ -190,7 +190,7 @@ export const EN = {
   '列表': 'List',
   // v1.2：歐洲各國平台、自訂分類
   '跨國平台': 'Multi-country',
-  '鄰近國家': 'Nearby',
+  '西歐': 'Western Europe',
   '北歐': 'Nordics',
   '中歐': 'Central Europe',
   '南歐': 'Southern Europe',
@@ -276,7 +276,7 @@ export const EN = {
   '按了測試卻沒看到通知：到 Mac 的「系統設定 → 通知 → Google Chrome」打開「允許通知」，樣式選「提示」，通知就會停在畫面上。': 'No test notification? On a Mac, open System Settings → Notifications → Google Chrome, turn on "Allow notifications" and choose the "Alerts" style so they stay on screen.',
   'Chrome 開著時才會檢查（視窗縮小也可以）。有新上架會跳出系統通知，工具列圖示也會顯示數字。': 'Checks run while Chrome is open (a minimized window is fine). New listings trigger a system notification and a number on the toolbar icon.',
   'Chrome 擋住了這個插件的通知，請到 chrome://settings/content/notifications 允許': 'Chrome is blocking notifications from this extension. Allow them at chrome://settings/content/notifications',
-  '已送出。沒看到的話，請照下面的說明打開 Mac 的通知設定': 'Sent. If you didn\'t see it, turn on notifications for Chrome in your Mac settings (see below)',
+  '已送出。沒看到的話，請看右邊 ⓘ 裡打開 Mac 通知的說明': 'Sent. If you didn\'t see it, the ⓘ on the right explains how to turn on Mac notifications',
   '送不出通知：{0}': 'Could not send the notification: {0}',
   // ---- v1.5：分類目錄、通知 ----
   '相機與攝影': 'Cameras & photo',
@@ -361,4 +361,13 @@ export const EN = {
   '再按一次刪除「{0}」': 'Press again to delete "{0}"',
   '再按一次從我的分類移除「{0}」': 'Press again to remove "{0}" from My categories',
   '關閉分類目錄': 'Close the catalog',
+  // ---- v1.5.1 ----
+  '設定': 'Settings',
+  '搜尋・備份・語言': 'Search · Backup · Language',
+  '說明': 'Info',
+  '追蹤的新上架': 'New from your watches',
+  '查看全部 →': 'View all →',
+  '追蹤的項目還沒有新上架': 'Nothing new from your watches yet',
+  '有新上架時會出現在這裡。': 'New listings will show up here.',
+  '搜尋後按「加入追蹤」，之後新上架的商品會出現在這裡。': 'Search, then click "Watch". New listings will show up here.',
 };
