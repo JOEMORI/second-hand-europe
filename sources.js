@@ -7,6 +7,10 @@
 //   shipping：'yes' 可寄送、'no' 只能面交、null 不知道
 // 注意：這個檔案用到 DOMParser，只能在頁面（search.html / offscreen.html）裡執行。
 import { T, tr, relTime, locale } from './i18n.js';
+import { CATALOG, WORD_LANGS } from './catalog.js';
+
+// 有專屬圖示的分類，其他用大類的圖示
+const ICONED = new Set(['film', 'lens', 'mic', 'rec', 'hp', 'cloth', 'naive']);
 
 const MP = 'https://www.marktplaats.nl', TDH = 'https://www.2dehands.be';
 
@@ -87,91 +91,16 @@ export const regionOf = k => (SOURCES[k].multi ? 'multi' : COUNTRY_REGION[SOURCE
 export const DEFAULT_SOURCES = ['mp', 'tdh', 'vinted', 'ka', 'ebay'];
 
 // ---------- 分類瀏覽 ----------
-// 每個分類對應到各平台自己的分類編號（2026/10 實測）。
-// Marktplaats / 2dehands / Vinted 有對應的官方分類；
-// Kleinanzeigen 分類較粗、eBay 純分類頁抓不到資料，所以用「分類＋通用關鍵字」。
-// 其他國家的平台用當地語言的關鍵字（CAT_WORDS）。
-// name / sub 是中文原文，顯示時用 tr() 翻譯。
-export const CATEGORIES = [
-  {
-    key: 'film', name: '底片相機', sub: "Fotocamera's Analoog · Analogkameras",
-    map: {
-      mp: { l1: 31, l2: 480 }, tdh: { l1: 31, l2: 480 },
-      vinted: { catalogs: [3076] },
-      ka: { path: 's-foto', c: 'c245', attr: 'foto.art_s:camera', q: 'analog', narrow: true },
-      ebay: { cat: 15230, q: 'kamera' },
-    },
-  },
-  {
-    key: 'lens', name: '鏡頭', sub: 'Objectieven · Objektive',
-    map: {
-      mp: { l1: 31, l2: 495 }, tdh: { l1: 31, l2: 495 },
-      vinted: { catalogs: [3061] },
-      ka: { path: 's-foto', c: 'c245', attr: 'foto.art_s:lens', slug: 'lens' },
-      ebay: { cat: 3323, q: 'objektiv' },
-    },
-  },
-  {
-    key: 'mic', name: '麥克風', sub: 'Microfoons · Mikrofone', exclude: 'statief, standaard, ständer, stativ, kabel, karaoke',
-    map: {
-      mp: { l1: 728, l2: 757 }, tdh: { l1: 728, l2: 757 },
-      vinted: { catalogs: [5103] },
-      ka: { path: 's-musikinstrumente', c: 'c74', q: 'mikrofon', narrow: true },
-      ebay: { cat: 29946, q: 'mikrofon' },
-    },
-  },
-  {
-    key: 'rec', name: '錄音機', sub: 'Recorders · Rekorder（含卡帶錄音機）',
-    map: {
-      mp: { l1: 31, l2: 1117, q: 'recorder', narrow: true }, tdh: { l1: 31, l2: 1117, q: 'recorder', narrow: true },
-      vinted: { catalogs: [3566, 4833], q: 'recorder', narrow: true },
-      ka: { path: 's-audio-hifi', c: 'c172', q: 'recorder', narrow: true },
-      ebay: { cat: 15052, q: 'recorder' },
-    },
-  },
-  {
-    key: 'hp', name: '耳機', sub: 'Koptelefoons · Kopfhörer',
-    map: {
-      mp: { l1: 31, l2: 37 }, tdh: { l1: 31, l2: 37 },
-      vinted: { catalogs: [3678] },
-      ka: { path: 's-audio-hifi', c: 'c172', attr: 'audio_hifi.art_s:lautsprecher_kopfhoerer', q: 'kopfhoerer' },
-      ebay: { cat: 112529, q: 'kopfhörer' },
-    },
-  },
-  {
-    // 服飾：只有這 5 個平台有對應的服飾分類，其他平台不搜（只用品牌名搜尋會混進一堆不相干的東西）
-    key: 'cloth', name: '服飾', sub: 'Kleding · Kleidung（Vinted、Marktplaats、2dehands、Kleinanzeigen、eBay）',
-    map: {
-      mp: [{ l1: 621 }, { l1: 1776 }], tdh: [{ l1: 621 }, { l1: 1776 }],
-      vinted: { catalogs: [1904, 5] },
-      ka: { path: 's-mode-beauty', c: 'c153' },
-      // eBay 的分類頁沒有關鍵字時讀不到商品：只有搜尋品牌或型號時才用
-      ebay: { cat: 11450, needQ: true },
-    },
-  },
-  {
-    // 撿漏：不懂行情的賣家常用的標題（老相機、爺爺的、遺物、閣樓找到的），每個平台用當地語言搜尋
-    key: 'naive', name: '素人賣家', sub: 'oude camera · alte Kamera · vecchia macchina fotografica…', bargain: true,
-    map: {},
-  },
-];
+// 分類目錄在 catalog.js：大類 > 小類，每個小類對應到各平台自己的分類編號。
+// 沒有對應分類的平台用當地語言的關鍵字（每個小類的 w）。
+export { CATALOG, STARTER_CATS, LEGACY_CATS } from './catalog.js';
+// 所有小類攤平成一個清單（舊版的 film、lens、mic、rec、hp、cloth、naive 代號不變）
+export const CATEGORIES = CATALOG.flatMap(g => g.items.map(c => ({ ...c, group: g.key, ico: ICONED.has(c.key) ? 'cat-' + c.key : g.ico })));
+export const catGroup = key => CATALOG.find(g => g.key === key) || null;
 
-// 沒有對應分類的平台：用當地語言的關鍵字找
-export const CAT_WORDS = {
-  de: { film: 'analog kamera', lens: 'objektiv', mic: 'mikrofon', rec: 'recorder', hp: 'kopfhörer' },
-  nl: { film: 'analoge camera', lens: 'objectief', mic: 'microfoon', rec: 'recorder', hp: 'koptelefoon' },
-  da: { film: 'analogt kamera', lens: 'objektiv', mic: 'mikrofon', rec: 'båndoptager', hp: 'hovedtelefoner' },
-  sv: { film: 'analog kamera', lens: 'objektiv', mic: 'mikrofon', rec: 'bandspelare', hp: 'hörlurar' },
-  fi: { film: 'filmikamera', lens: 'objektiivi', mic: 'mikrofoni', rec: 'nauhuri', hp: 'kuulokkeet' },
-  pl: { film: 'aparat analogowy', lens: 'obiektyw', mic: 'mikrofon', rec: 'dyktafon', hp: 'słuchawki' },
-  cs: { film: 'analogový fotoaparát', lens: 'objektiv', mic: 'mikrofon', rec: 'diktafon', hp: 'sluchátka' },
-  sk: { film: 'analógový fotoaparát', lens: 'objektív', mic: 'mikrofón', rec: 'diktafón', hp: 'slúchadlá' },
-  it: { film: 'macchina fotografica analogica', lens: 'obiettivo', mic: 'microfono', rec: 'registratore', hp: 'cuffie' },
-  pt: { film: 'máquina fotográfica analógica', lens: 'objetiva', mic: 'microfone', rec: 'gravador', hp: 'auscultadores' },
-  ro: { film: 'aparat foto film', lens: 'obiectiv', mic: 'microfon', rec: 'reportofon', hp: 'căști' },
-  bg: { film: 'лентов фотоапарат', lens: 'обектив', mic: 'микрофон', rec: 'диктофон', hp: 'слушалки' },
-  hu: { film: 'analóg fényképezőgép', lens: 'objektív', mic: 'mikrofon', rec: 'diktafon', hp: 'fejhallgató' },
-};
+// 沒有對應分類的平台：用當地語言的關鍵字找。CAT_WORDS[語言][分類代號]
+export const CAT_WORDS = Object.fromEntries(WORD_LANGS.map(lang => [lang,
+  Object.fromEntries(CATEGORIES.filter(c => c.w?.[lang]).map(c => [c.key, c.w[lang]]))]));
 // 素人賣家：每種語言幾組字詞（陣列 = 每組各搜一次）
 const NAIVE_WORDS = {
   nl: ['oude camera', 'oud fototoestel', 'camera opa'],
@@ -370,7 +299,7 @@ function adevintaTs(label, rank) {
 async function fetchAdevinta(spec, page, opts, base, name, prefix) {
   const lo = num(opts?.price?.min), hi = num(opts?.price?.max);
   const url = withPrice => `${base}/lrp/api/search?` +
-    (spec.l1 ? `l1CategoryId=${spec.l1}&` + (spec.l2 ? `l2CategoryIds=${spec.l2}&` : '') : '') +
+    (spec.l1 ? `l1CategoryId=${spec.l1}&` + [].concat(spec.l2 ?? []).map(x => `l2CategoryIds=${x}&`).join('') : '') +
     (spec.q || spec.query ? `query=${enc(spec.q || spec.query)}&` : '') +
     (withPrice ? `attributeRanges[]=PriceCents:${lo != null ? Math.round(lo * 100) : 'null'}:${hi != null ? Math.round(hi * 100) : 'null'}&` : '') +
     `limit=40&offset=${(page - 1) * 40}&sortBy=SORT_INDEX&sortOrder=DECREASING`;
@@ -1457,15 +1386,23 @@ export function catTasks(cat, sourceKeys, o = {}, q = '') {
 }
 export const taskSource = id => String(id).split('::')[0];
 // 這個分類在勾選的平台中，實際會用到哪些平台
-export const catSources = (cat, sourceKeys) => [...new Set(catTasks(cat, sourceKeys).map(t => t.src))];
+// q：在分類裡搜尋的關鍵字。有些平台只有輸入關鍵字時才搜（例如 eBay 的服飾），要一起傳進來才算得準
+export const catSources = (cat, sourceKeys, q = '') => [...new Set(catTasks(cat, sourceKeys, {}, q).map(t => t.src))];
 // 分類在某個平台上怎麼找（顯示給使用者看）
+// 回傳 { kind: 'cat'（平台分類）| 'word'（當地關鍵字）| 'custom'（自訂關鍵字）| 'none'（不搜）, words }
+//   kind 是 'cat' 時，words 是平台分類之外另外加上的關鍵字（例如 Kleinanzeigen 的「plattenspieler」）
 export function catHow(cat, k) {
   const s = SOURCES[k];
-  if (!s || !cat) return '';
-  if (cat.custom) return (cat.words || []).join(', ');
-  if (cat.map?.[k] && s.browse) return tr('平台分類');
+  if (!s || !cat) return { kind: 'none', words: '' };
+  if (cat.custom) return { kind: 'custom', words: (cat.words || []).join(', ') };
+  if (cat.map?.[k] && s.browse) {
+    const specs = [].concat(cat.map[k]);
+    if (specs.every(x => x.needQ)) return { kind: 'cat', words: '', needQ: true };
+    return { kind: 'cat', words: [...new Set(specs.map(x => x.q).filter(Boolean))].join(', ') };
+  }
   const w = catWords(k, cat.key);
-  return Array.isArray(w) ? w.join(', ') : w || '';
+  if (!w) return { kind: 'none', words: '' };
+  return { kind: 'word', words: Array.isArray(w) ? w.join(', ') : w };
 }
 
 // cat：內建分類代號，或分類物件（自訂分類）

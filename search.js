@@ -2,7 +2,7 @@
 setTimeout(() => document.documentElement.classList.remove('i18n-pending'), 1500);
 import {
   searchAll, searchMulti, browseAll, applyFilters, computeDeals, computeBrowseFlags, sortNewest, cmpPrice, fmt,
-  LINK_SITES, SOURCES, DEFAULT_SOURCES, CATEGORIES,
+  LINK_SITES, SOURCES, DEFAULT_SOURCES, CATEGORIES, CATALOG, catGroup, STARTER_CATS, LEGACY_CATS,
   REGIONS, regionOf, countryRank, countryName, catSources, taskSource, catHow, parseWords, checkBids,
 } from './sources.js';
 import { T, tr, i18nReady, translateDom, locale, getLang, relTime } from './i18n.js';
@@ -26,6 +26,7 @@ const state = {
   selected: [...DEFAULT_SOURCES],
   favIds: new Set(),
   customCats: [],       // 使用者自訂的分類
+  myCats: [],           // 「我的分類」：分類瀏覽頁上顯示的分類代號（目錄裡的或自訂的）
   gen: 0,
 };
 
@@ -164,7 +165,10 @@ function fillForm(v) {
   $('max').value = v.max || '';
   $('exclude').value = v.exclude || '';
   $('strict').checked = v.strict !== false;
-  $('qCat').value = v.cat && findCat(v.cat) ? v.cat : '';
+  const fc = v.cat && findCat(v.cat);
+  // 快捷用的分類已經不在「我的分類」裡：選單臨時加上這個分類，不要默默變成所有分類
+  if (fc && ![...$('qCat').options].some(o => o.value === fc.key)) $('qCat').append(el('option', { value: fc.key, class: 'tmp' }, catName(fc)));
+  $('qCat').value = fc ? fc.key : '';
   $('qCat').classList.toggle('on', !!$('qCat').value);
   if (v.sources?.length) {
     state.selected = v.sources.filter(k => SOURCES[k]);
@@ -187,7 +191,7 @@ async function runSearch(override, { stay = false } = {}) {
   if (!v.multi && !v.sources.length) { flash($('sourcePills'), T`請至少選一個平台`); return; }
   // 選了分類：只在這個分類裡搜尋（用分類瀏覽的方式，各平台在對應分類裡找這個關鍵字）
   const cat = !v.multi && v.cat ? findCat(v.cat) : null;
-  if (cat && !catSources(cat, v.sources).length) { flash($('qCat'), T`勾選的平台都沒有這個分類`); return; }
+  if (cat && !catSources(cat, v.sources, v.query).length) { flash($('qCat'), T`勾選的平台都沒有這個分類`); return; }
   const gen = ++state.gen;
   state.stale = false;
   // 快捷或追蹤帶入的價格：記下來，之後改價格時才會正確判斷「價格有沒有變」
@@ -206,7 +210,7 @@ async function runSearch(override, { stay = false } = {}) {
   state.onlySource = null;
   state.onlyDeals = false;
   state.naive = !!v.naive;
-  const allSources = cat ? catSources(cat, v.sources) : [...new Set(subs.flatMap(s => s.sources))];
+  const allSources = cat ? catSources(cat, v.sources, v.query) : [...new Set(subs.flatMap(s => s.sources))];
   state.progress = Object.fromEntries(allSources.map(k => [k, { status: 'loading', count: 0 }]));
   renderStatus();
   $('emptyResults').hidden = true;
@@ -794,18 +798,30 @@ $('saveQuick').addEventListener('click', async () => {
 });
 
 // ---------- 分類瀏覽 ----------
-const bState = { cat: null, catObj: null, q: '', price: { min: '', max: '' }, priceKey: '|', raw: [], progress: {}, paging: {}, flags: {}, onlySource: null, onlyFlag: null, loading: false, gen: 0 };
+const bState = { cat: null, catObj: null, q: '', price: { min: '', max: '' }, priceKey: '|', raw: [], progress: {}, paging: {}, flags: {}, onlySource: null, onlyFlag: null, loading: false, gen: 0, watchAfter: null };
 
-// 內建分類 + 使用者自訂分類
+// 分類目錄裡的分類 + 使用者自訂分類
 const findCat = key => CATEGORIES.find(c => c.key === key) || state.customCats.find(c => c.key === key) || null;
 const catName = c => (c.custom ? c.name : tr(c.name));
+// 「我的分類」：使用者自己挑的分類（目錄裡的或自訂的），可以自由加入、移除
+const myCatList = () => state.myCats.map(findCat).filter(Boolean);
+async function saveMyCats(keys) {
+  state.myCats = [...new Set(keys)].filter(k => findCat(k));
+  await store.set({ myCats: state.myCats });
+}
 
-// 搜尋框旁的分類選單：所有分類，或只在某個分類裡搜尋
+// 搜尋框旁的分類選單：所有分類，或只在「我的分類」的某個分類裡搜尋
 function renderQCat() {
   const sel = $('qCat');
   const cur = sel.value;
-  const cats = [...CATEGORIES.filter(c => !c.bargain), ...state.customCats];
-  sel.replaceChildren(el('option', { value: '' }, T`所有分類`), ...cats.map(c => el('option', { value: c.key }, catName(c))));
+  const cats = myCatList().filter(c => !c.bargain);
+  // 目前選著、但不在我的分類裡的分類（快捷帶進來的）保留在選單裡
+  const extra = cur && !cats.some(c => c.key === cur) && findCat(cur);
+  if (extra) cats.push(extra);
+  const groups = CATALOG.map(g => [tr(g.name), cats.filter(c => c.group === g.key)]);
+  groups.push([T`自訂分類`, cats.filter(c => c.custom)]);
+  sel.replaceChildren(el('option', { value: '' }, T`所有分類`),
+    ...groups.filter(([, list]) => list.length).map(([label, list]) => el('optgroup', { label }, ...list.map(c => el('option', { value: c.key }, catName(c))))));
   sel.value = cats.some(c => c.key === cur) ? cur : '';
   sel.classList.toggle('on', !!sel.value);
 }
@@ -817,32 +833,198 @@ $('qCat').addEventListener('change', () => {
 
 function renderCats() {
   renderQCat();
-  const builtIn = CATEGORIES.map(c => el('button', {
-    type: 'button',
-    class: 'cat' + (bState.cat === c.key ? ' on' : ''),
-    onclick: () => pickCat(c.key),
-  }, icon('cat-' + c.key, 'cat-ico'), el('strong', {}, tr(c.name)), el('small', {}, tr(c.sub))));
-  const custom = state.customCats.map(c => el('div', {
-    class: 'cat custom' + (bState.cat === c.key ? ' on' : ''),
-    role: 'button',
-    tabindex: '0',
-    title: T`關鍵字：${c.words.join(', ')}`,
-    onclick: () => pickCat(c.key),
-    onkeydown: e => {
-      if (e.target !== e.currentTarget) return; // 在鉛筆按鈕上按 Enter 是編輯，不是瀏覽
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickCat(c.key); }
+  const chips = myCatList().map(c => {
+    const rm = el('button', { type: 'button', class: 'cat-rm', title: T`從我的分類移除`, 'aria-label': T`從我的分類移除`, onclick: e => { e.stopPropagation(); armRemove(rm, c); } }, icon('x', 'ico tiny'));
+    return el('div', {
+      class: 'cat' + (c.custom ? ' custom' : '') + (bState.cat === c.key ? ' on' : ''),
+      role: 'button',
+      tabindex: '0',
+      title: c.custom ? T`關鍵字：${c.words.join(', ')}` : '',
+      onclick: () => pickCat(c.key),
+      onkeydown: e => {
+        if (e.target !== e.currentTarget) return; // 在小按鈕上按 Enter 是那個按鈕的動作
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickCat(c.key); }
+      },
     },
-  },
-    icon('cat-custom', 'cat-ico'),
-    el('strong', {}, c.name),
-    el('small', {}, c.words.join(' · ')),
-    el('button', { type: 'button', class: 'cat-edit', title: T`編輯分類`, onclick: e => { e.stopPropagation(); openCatEditor(c); } }, icon('edit', 'ico tiny')),
-  ));
-  const add = el('button', { type: 'button', class: 'cat add', onclick: () => openCatEditor(null) },
-    icon('plus', 'cat-ico'), el('strong', {}, T`新增分類`), el('small', {}, T`用自己的關鍵字建立分類，任何語言都可以`));
-  $('catList').replaceChildren(...builtIn, ...custom, add);
+      icon(c.custom ? 'cat-custom' : c.ico, 'cat-ico'),
+      el('strong', {}, catName(c)),
+      el('small', {}, c.custom ? c.words.join(' · ') : tr(c.sub)),
+      el('span', { class: 'cat-btns' },
+        c.custom ? el('button', { type: 'button', class: 'cat-edit', title: T`編輯分類`, onclick: e => { e.stopPropagation(); openCatEditor(c); } }, icon('edit', 'ico tiny')) : null,
+        rm),
+    );
+  });
+  const add = el('button', { type: 'button', class: 'cat add', onclick: () => openPicker() },
+    icon('plus', 'cat-ico'), el('strong', {}, T`從分類目錄加入`), el('small', {}, T`相機、音響、樂器、家具、服飾、單車…，對應到各平台自己的分類`));
+  const custom = el('button', { type: 'button', class: 'cat add alt', onclick: () => openCatEditor(null) },
+    icon('edit', 'cat-ico'), el('strong', {}, T`用關鍵字自訂`), el('small', {}, T`用自己的關鍵字建立分類，任何語言都可以`));
+  $('catList').replaceChildren(...chips, add, custom);
   // 選了分類之後，分類卡片縮成一排小按鈕，商品可以直接看到
   $('catList').classList.toggle('compact', !!bState.cat);
+  if (!bState.cat) showBrowseEmpty();
+}
+
+// 沒選分類時的提示
+function showBrowseEmpty() {
+  $('bEmpty').hidden = false;
+  $('bEmpty').replaceChildren(icon('grid', 'empty-ico'), el('p', {}, state.myCats.length ? T`選一個分類開始瀏覽` : T`還沒有分類，按「從分類目錄加入」挑幾個常看的分類`));
+}
+
+// 移除要按兩次（第一次按鈕變成「移除？」，3 秒內再按一次才移除），避免誤刪
+function armRemove(btn, c) {
+  if (btn.dataset.armed) { removeMyCat(c.key); return; }
+  btn.dataset.armed = '1';
+  btn.replaceChildren(document.createTextNode(c.custom ? T`刪除？` : T`移除？`));
+  btn.setAttribute('aria-label', c.custom ? T`再按一次刪除「${c.name}」` : T`再按一次從我的分類移除「${catName(c)}」`);
+  btn.classList.add('armed');
+  setTimeout(() => {
+    if (!btn.isConnected) return;
+    delete btn.dataset.armed;
+    btn.classList.remove('armed');
+    btn.setAttribute('aria-label', T`從我的分類移除`);
+    btn.replaceChildren(icon('x', 'ico tiny'));
+  }, 3000);
+}
+
+// 從「我的分類」移除。目錄裡的分類之後可以再加回來；自訂分類會一起刪掉。
+// 追蹤清單裡用到這個分類的追蹤不受影響（追蹤自己存了分類內容）。
+async function removeMyCat(key) {
+  const c = findCat(key);
+  // 編輯器正開著這個分類：一起關掉，不然按儲存會把刪掉的分類又存回來
+  if (!$('catEditor').hidden && $('catEditor').dataset.key === key) closeCatEditor();
+  if (c?.custom) state.customCats = state.customCats.filter(x => x.key !== key);
+  await store.set({ customCats: state.customCats });
+  await saveMyCats(state.myCats.filter(k => k !== key));
+  if (bState.cat === key) resetBrowse();
+  else renderCats();
+  if (!$('catPicker').open) return;
+  renderPicker();
+}
+
+// 回到還沒選分類的畫面
+function resetBrowse() {
+  bState.cat = null; bState.catObj = null; bState.gen++; bState.loading = false; bState.raw = []; bState.progress = {}; bState.paging = {};
+  setBrowseQuery('');
+  $('bSearch').hidden = true;
+  $('bWatch').hidden = true;
+  $('bMore').hidden = true;
+  $('bMoreLoading').hidden = true;
+  $('bResults').replaceChildren();
+  renderCats();
+  renderBrowse();
+  showBrowseEmpty();
+}
+
+// ---------- 分類目錄（加入分類） ----------
+const pk = { q: '', sel: null };
+// 搜尋用的文字：中文、英文名稱、荷蘭文 / 德文原文和別名，去掉重音、不分大小寫
+const foldText = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const catHay = c => foldText([c.name, tr(c.name), c.sub, tr(c.sub), c.kw, tr(catGroup(c.group)?.name || ''), catGroup(c.group)?.name].join(' '));
+function pickerMatches(q) {
+  const words = foldText(q).split(/\s+/).filter(Boolean);
+  if (!words.length) return CATEGORIES;
+  return CATEGORIES.filter(c => { const h = catHay(c); return words.every(w => h.includes(w)); });
+}
+
+function openPicker(q = '') {
+  pk.q = q;
+  pk.sel = null;
+  $('pkQ').value = q;
+  renderPicker();
+  $('catPicker').showModal();
+  $('pkQ').focus();
+}
+$('pkQ').addEventListener('input', () => { pk.q = $('pkQ').value; pk.sel = null; renderPicker(); });
+$('pkQ').addEventListener('keydown', e => {
+  // Enter：選第一個結果
+  if (e.key === 'Enter') { e.preventDefault(); const first = pickerMatches(pk.q)[0]; if (first) { pk.sel = first.key; renderPicker(); } }
+});
+$('pkClose').addEventListener('click', () => $('catPicker').close());
+// 點對話框外面（灰色背景）也關閉
+$('catPicker').addEventListener('click', e => { if (e.target === $('catPicker')) $('catPicker').close(); });
+
+function renderPicker() {
+  const list = pickerMatches(pk.q);
+  if (!list.some(c => c.key === pk.sel)) pk.sel = pk.q.trim() && list.length ? list[0].key : null;
+  const item = c => el('button', {
+    type: 'button',
+    class: 'pk-item' + (pk.sel === c.key ? ' on' : ''),
+    'data-key': c.key,
+    'aria-pressed': String(pk.sel === c.key),
+    onclick: () => selectPickerItem(c.key),
+  },
+    pk.q.trim() ? el('span', { class: 'pk-crumb' }, `${tr(catGroup(c.group).name)} ›`) : null,
+    el('strong', {}, tr(c.name), state.myCats.includes(c.key) ? el('span', { class: 'pk-have' }, T`已加入`) : null),
+    el('small', {}, tr(c.sub)),
+  );
+  const rows = [];
+  if (pk.q.trim()) {
+    rows.push(el('p', { class: 'pk-count' }, list.length ? T`${list.length} 個結果` : T`找不到符合的分類`));
+    rows.push(...list.map(item));
+  } else {
+    for (const g of CATALOG) {
+      rows.push(el('p', { class: 'pk-group' }, tr(g.name)));
+      rows.push(...CATEGORIES.filter(c => c.group === g.key).map(item));
+    }
+  }
+  const q = pk.q.trim();
+  rows.push(el('div', { class: 'pk-miss' },
+    el('span', {}, T`找不到想要的？`),
+    el('button', { type: 'button', class: 'linkbtn', onclick: () => { $('catPicker').close(); openCatEditor(null, q); } }, q ? T`改用關鍵字自訂「${q}」` : T`用關鍵字自訂分類`)));
+  $('pkList').replaceChildren(...rows);
+  renderPickerDetail();
+}
+
+// 點左邊的分類：只換選取狀態和右邊的說明，不重畫清單（鍵盤操作時焦點才不會跑掉）
+function selectPickerItem(key) {
+  pk.sel = key;
+  for (const b of $('pkList').querySelectorAll('.pk-item')) {
+    const on = b.dataset.key === key;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  }
+  renderPickerDetail();
+}
+
+function renderPickerDetail() {
+  const box = $('pkDetail');
+  const c = pk.sel && findCat(pk.sel);
+  if (!c) { box.replaceChildren(el('p', { class: 'pk-hint' }, T`點左邊的分類，看看在各平台會怎麼找`)); return; }
+  const have = state.myCats.includes(c.key);
+  const keys = state.selected.filter(k => SOURCES[k]);
+  const label = { cat: T`平台分類`, word: T`當地關鍵字`, none: T`不搜尋` };
+  const rows = keys.map(k => {
+    const h = catHow(c, k);
+    const text = h.kind === 'cat'
+      ? (h.needQ ? T`平台分類（只在你輸入品牌或型號時搜尋）` : h.words ? T`平台分類 ＋ 關鍵字「${h.words}」` : T`平台分類`)
+      : h.kind === 'word' ? h.words : (c.bargain ? '' : T`這個平台沒有對應分類，不搜尋`);
+    return [el('span', { class: 'pk-src' }, el('i', { style: `--c:${SOURCES[k].color}` }), SOURCES[k].name),
+      el('span', { class: 'pk-how ' + h.kind }, el('b', {}, label[h.kind] || ''), text ? ' · ' : '', text)];
+  }).flat();
+  const used = catSources(c, keys).length;
+  box.replaceChildren(
+    el('span', { class: 'pk-crumb' }, `${tr(catGroup(c.group).name)} › ${tr(c.name)}`),
+    el('h3', {}, T`加入後會這樣找`),
+    keys.length
+      ? el('p', { class: 'pk-sum' }, T`你勾選的 ${keys.length} 個平台中，${used} 個會搜尋這個分類`)
+      : el('p', { class: 'pk-sum warn' }, T`請先在左側勾選至少一個平台`),
+    el('div', { class: 'pk-cover' }, ...rows),
+    have ? null : el('label', { class: 'pk-watch' }, el('input', { type: 'checkbox', id: 'pkWatch' }), T`加入後也開始追蹤這個分類的新上架`),
+    el('div', { class: 'pk-actions' },
+      el('button', { type: 'button', class: 'ghost', onclick: () => $('catPicker').close() }, T`取消`),
+      el('button', { type: 'button', class: 'primary', onclick: () => addFromPicker(c) }, have ? T`瀏覽「${tr(c.name)}」` : T`加入「${tr(c.name)}」並瀏覽`)),
+  );
+}
+
+async function addFromPicker(c) {
+  const watch = $('pkWatch')?.checked;
+  if (!state.myCats.includes(c.key)) await saveMyCats([...state.myCats, c.key]);
+  $('catPicker').close();
+  showTab('browse');
+  if (bState.cat !== c.key) setBrowseQuery('');
+  // 追蹤：等這次瀏覽讀完，直接用讀到的商品當成「已看過」，不用再對每個平台多讀一次
+  bState.watchAfter = watch ? c.key : null;
+  startBrowse(c.key);
 }
 
 // 點分類卡片：換分類時清掉分類內的關鍵字
@@ -868,13 +1050,13 @@ $('bQClear').addEventListener('click', () => {
 });
 
 // ---------- 自訂分類編輯 ----------
-function openCatEditor(cat) {
+function openCatEditor(cat, prefill = '') {
   const box = $('catEditor');
   box.hidden = false;
   box.dataset.key = cat?.key || '';
   $('ceTitle').textContent = cat ? T`編輯分類` : T`新增分類`;
-  $('ceName').value = cat?.name || '';
-  $('ceWords').value = cat ? cat.words.join(', ') : '';
+  $('ceName').value = cat?.name || prefill;
+  $('ceWords').value = cat ? cat.words.join(', ') : prefill;
   $('ceExclude').value = cat?.exclude || '';
   $('ceDelete').hidden = !cat;
   $('ceDelete').textContent = T`刪除分類`;
@@ -888,7 +1070,8 @@ function closeCatEditor() { $('catEditor').hidden = true; }
 async function saveCustomCats(list) {
   state.customCats = list;
   await store.set({ customCats: list });
-  renderCats();
+  // 新建的自訂分類放進「我的分類」；刪掉的拿掉
+  await saveMyCats([...state.myCats, ...list.map(c => c.key)]);
 }
 
 $('ceCancel').addEventListener('click', closeCatEditor);
@@ -917,19 +1100,8 @@ $('ceDelete').addEventListener('click', async () => {
   // 按兩次才刪除，避免誤刪
   if (!btn.dataset.armed) { btn.dataset.armed = '1'; btn.textContent = T`再按一次確定刪除`; return; }
   const key = $('catEditor').dataset.key;
-  await saveCustomCats(state.customCats.filter(c => c.key !== key));
   closeCatEditor();
-  if (bState.cat === key) {
-    bState.cat = null; bState.catObj = null; bState.gen++; bState.raw = []; bState.progress = {}; bState.paging = {};
-    setBrowseQuery('');
-    renderCats();
-    $('bSearch').hidden = true;
-    $('bWatch').hidden = true;
-    $('bResults').replaceChildren();
-    renderBrowse();
-    $('bEmpty').hidden = false;
-    $('bEmpty').replaceChildren(el('p', {}, T`選一個分類開始瀏覽`));
-  }
+  await removeMyCat(key);
 });
 
 function catExclude() {
@@ -941,6 +1113,7 @@ async function startBrowse(key, fallback) {
   if (!state.selected.length) { flash($('catList'), T`請在上方至少選一個平台`); return; }
   const cat = findCat(key) || fallback;
   if (!cat) return;
+  if (bState.watchAfter !== key) bState.watchAfter = null;
   bState.cat = key;
   bState.catObj = cat;
   // 素人賣家分類：預設用「撿漏優先」排序
@@ -954,7 +1127,7 @@ async function startBrowse(key, fallback) {
   bState.onlySource = null;
   bState.onlyFlag = null;
   delete $('bMore').dataset.autoAt;
-  const keys = catSources(cat, state.selected);
+  const keys = catSources(cat, state.selected, bState.q);
   bState.progress = Object.fromEntries(keys.map(k => [k, { status: 'loading', count: 0 }]));
   renderCats();
   $('bSearch').hidden = false;
@@ -985,6 +1158,10 @@ async function loadBrowse(keys, start) {
   bState.raw.push(...res.items.filter(i => !seen.has(i.id)));
   Object.assign(bState.paging, res.paging);
   renderBrowse();
+  if (bState.watchAfter && bState.watchAfter === bState.cat && !Object.keys(start).length) {
+    bState.watchAfter = null;
+    addBrowseWatch(res);
+  }
   checkBids(bState.raw, () => { if (bState.gen === gen) renderBrowse(); }, 40, () => bState.gen !== gen);
 }
 
@@ -1130,11 +1307,13 @@ function setSearchPrice() {
 ['bMin', 'bMax'].forEach(id => $(id).addEventListener('input', () => setPrice($('bMin').value.trim(), $('bMax').value.trim(), false)));
 ['min', 'max'].forEach(id => $(id).addEventListener('change', setSearchPrice));
 
-$('bWatch').addEventListener('click', async () => {
+$('bWatch').addEventListener('click', () => addBrowseWatch());
+// 追蹤目前瀏覽的分類（含分類內關鍵字和價格）。seed：已經讀好的結果，有的話就不用再讀一次
+async function addBrowseWatch(seed) {
   const cat = bState.catObj;
   if (!cat) return;
   const btn = $('bWatch');
-  const sources = catSources(cat, state.selected);
+  const sources = catSources(cat, state.selected, bState.q);
   if (!sources.length) { flash(btn, T`請至少選一個平台`); return; }
   const { min, max } = browsePrice();
   const catQuery = bState.q;
@@ -1143,7 +1322,7 @@ $('bWatch').addEventListener('click', async () => {
   const same = w => w.category === cat.key && (w.catQuery || '') === catQuery && (w.min || '') === min && (w.max || '') === max && [...(w.sources || [])].sort().join() === [...sources].sort().join();
   if ((await store.get('watches')).watches?.some(same)) { flash(btn, T`已經在追蹤了`); return; }
   btn.disabled = true;
-  const { items, errors } = await browseAll(cat, sources, null, { price: { min, max }, pages: 1, q: catQuery });
+  const { items, errors } = seed || await browseAll(cat, sources, null, { price: { min, max }, pages: 1, q: catQuery });
   // 搜尋要花一點時間，期間清單可能有變：搜完再讀最新的清單
   const { watches = [] } = await store.get('watches');
   if (watches.some(same)) { btn.disabled = false; flash(btn, T`已經在追蹤了`); return; }
@@ -1163,7 +1342,7 @@ $('bWatch').addEventListener('click', async () => {
   await store.set({ watches });
   btn.disabled = false;
   flash(btn, T`已加入追蹤`);
-});
+}
 
 $('dealThreshold').addEventListener('change', e => {
   state.threshold = Number(e.target.value);
@@ -1182,7 +1361,7 @@ $('watchBtn').addEventListener('click', async () => {
   // 選了分類：追蹤「這個分類裡的這個關鍵字」
   const cat = v.cat ? findCat(v.cat) : null;
   if (cat) {
-    const sources = catSources(cat, v.sources);
+    const sources = catSources(cat, v.sources, v.query);
     if (!sources.length) { flash(btn, T`勾選的平台都沒有這個分類`); return; }
     const sameCat = w => w.category === cat.key && (w.catQuery || '').toLowerCase() === v.query.toLowerCase() &&
       (w.min || '') === v.min && (w.max || '') === v.max && [...(w.sources || [])].sort().join() === [...sources].sort().join();
@@ -1285,9 +1464,13 @@ $('interval').addEventListener('change', e => store.set({ interval: Number(e.tar
 // ---------- 系統通知（Mac / Windows 的通知中心） ----------
 $('notifyOn').addEventListener('change', () => store.set({ notifyOn: $('notifyOn').checked }));
 $('notifySticky').addEventListener('change', () => store.set({ notifySticky: $('notifySticky').checked }));
-store.get(['notifyOn', 'notifySticky']).then(({ notifyOn = true, notifySticky = false }) => {
+$('notifyMode').addEventListener('change', () => store.set({ notifyMode: $('notifyMode').value }));
+$('notifyDealsOnly').addEventListener('change', () => store.set({ notifyDealsOnly: $('notifyDealsOnly').checked }));
+store.get(['notifyOn', 'notifySticky', 'notifyMode', 'notifyDealsOnly']).then(({ notifyOn = true, notifySticky = false, notifyMode = 'each', notifyDealsOnly = false }) => {
   $('notifyOn').checked = notifyOn;
   $('notifySticky').checked = notifySticky;
+  $('notifyMode').value = notifyMode === 'summary' ? 'summary' : 'each';
+  $('notifyDealsOnly').checked = notifyDealsOnly;
 });
 $('notifyTest').addEventListener('click', async () => {
   const msg = $('notifyMsg');
@@ -1336,6 +1519,14 @@ $('clearNew').addEventListener('click', async () => {
 
 chrome.storage.onChanged.addListener(c => {
   if (c.newItems) renderNew(!$('tab-new').hidden);
+  // 另一個分頁改了我的分類或自訂分類：跟著更新，不然這個分頁之後存檔會把改動蓋回去
+  if (c.customCats && JSON.stringify(c.customCats.newValue || []) !== JSON.stringify(state.customCats)) {
+    state.customCats = (c.customCats.newValue || []).filter(x => x?.key && x.name && Array.isArray(x.words) && x.words.length).map(x => ({ ...x, custom: true }));
+  }
+  if (c.myCats && JSON.stringify(c.myCats.newValue || []) !== JSON.stringify(state.myCats)) {
+    state.myCats = (c.myCats.newValue || []).filter(k => findCat(k));
+    if (bState.cat && !findCat(bState.cat)) resetBrowse(); else renderCats();
+  }
   if (c.favorites) {
     loadFavs();
     // 背景自動移除了商品：重畫收藏清單（只改備註時不重畫，避免打字打到一半被打斷）
@@ -1346,7 +1537,7 @@ chrome.storage.onChanged.addListener(c => {
 });
 
 // ---------- 備份 ----------
-const BACKUP_KEYS = ['favorites', 'watches', 'quick', 'customCats', 'selectedSources', 'dealThreshold', 'interval', 'lang', 'usedOnly', 'shipOnly', 'newItems', 'favRemoved', 'favAutoRemove', 'notifyOn', 'notifySticky', 'viewMode', 'favView'];
+const BACKUP_KEYS = ['favorites', 'watches', 'quick', 'customCats', 'myCats', 'selectedSources', 'dealThreshold', 'interval', 'lang', 'usedOnly', 'shipOnly', 'newItems', 'favRemoved', 'favAutoRemove', 'notifyOn', 'notifySticky', 'notifyMode', 'notifyDealsOnly', 'viewMode', 'favView'];
 
 $('exportBtn').addEventListener('click', async () => {
   const data = await store.get(BACKUP_KEYS);
@@ -1378,9 +1569,12 @@ $('importFile').addEventListener('change', async e => {
       newItems: list(data.newItems, x => typeof x.id === 'string' && typeof x.title === 'string'),
       favRemoved: list(data.favRemoved, x => typeof x.id === 'string' && typeof x.title === 'string'),
     };
+    if (Array.isArray(data.myCats)) clean.myCats = data.myCats.filter(k => typeof k === 'string');
     if (typeof data.favAutoRemove === 'boolean') clean.favAutoRemove = data.favAutoRemove;
     if (typeof data.notifyOn === 'boolean') clean.notifyOn = data.notifyOn;
     if (typeof data.notifySticky === 'boolean') clean.notifySticky = data.notifySticky;
+    if (data.notifyMode === 'each' || data.notifyMode === 'summary') clean.notifyMode = data.notifyMode;
+    if (typeof data.notifyDealsOnly === 'boolean') clean.notifyDealsOnly = data.notifyDealsOnly;
     if (data.viewMode === 'grid' || data.viewMode === 'list') clean.viewMode = data.viewMode;
     if (data.favView === 'grid' || data.favView === 'list') clean.favView = data.favView;
     if (Array.isArray(data.selectedSources)) clean.selectedSources = data.selectedSources.filter(k => SOURCES[k]);
@@ -1413,6 +1607,19 @@ $('langSel').addEventListener('change', async e => {
   $('langSel').value = getLang();
   const { selectedSources, dealThreshold, usedOnly, shipOnly, viewMode, favView, customCats } = await store.get(['selectedSources', 'dealThreshold', 'usedOnly', 'shipOnly', 'viewMode', 'favView', 'customCats']);
   if (Array.isArray(customCats)) state.customCats = customCats.filter(c => c?.key && c.name && Array.isArray(c.words) && c.words.length).map(c => ({ ...c, custom: true }));
+  // 我的分類。v1.5 以前沒有這個設定：用過插件的人保留原本看到的分類，第一次用的人給幾個不同領域的範例
+  {
+    const { myCats } = await store.get('myCats');
+    let keys = myCats;
+    if (!Array.isArray(keys)) {
+      const old = await store.get(['watches', 'favorites', 'selectedSources', 'customCats', 'quick', 'newItems']);
+      keys = Object.values(old).some(v => v != null) ? LEGACY_CATS : STARTER_CATS;
+    }
+    // 自訂分類一定在我的分類裡（例如從備份還原的）
+    const next = [...new Set([...keys, ...state.customCats.map(c => c.key)])].filter(k => findCat(k));
+    state.myCats = next;
+    if (JSON.stringify(next) !== JSON.stringify(myCats)) await store.set({ myCats: next });
+  }
   applyView(viewMode === 'list' ? 'list' : 'grid');
   applyFavView(favView === 'grid' ? 'grid' : 'list');
   // 工具列固定在搜尋框下方：量出搜尋框區塊的高度

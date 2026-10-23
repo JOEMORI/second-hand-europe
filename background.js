@@ -1,4 +1,4 @@
-import { applyFilters, computeDeals, CATEGORIES } from './sources.js';
+import { applyFilters, computeDeals, CATEGORIES, SOURCES } from './sources.js';
 import { T, tr, i18nReady, getLang, setLang } from './i18n.js';
 import { checkFavorites } from './favcheck.js';
 
@@ -201,27 +201,87 @@ async function runCheck() {
   await chrome.storage.local.set({ watches: latest, newItems: merged });
   await updateBadge(merged.filter(i => !i.viewed).length);
 
-  const { notifyOn = true, notifySticky = false } = await chrome.storage.local.get(['notifyOn', 'notifySticky']);
-  if (found.length && notifyOn) {
-    // 低於行情的排前面
-    found.sort((a, b) => (b.deal?.kind === 'deal') - (a.deal?.kind === 'deal'));
-    const deals = found.filter(i => i.deal?.kind === 'deal');
-    const first = found[0];
-    const tag = i => (i.deal?.kind === 'deal' ? T`［低於行情 ${i.deal.pct}%］` : '');
-    chrome.notifications.create('new-' + Date.now(), {
-      type: 'basic',
-      iconUrl: 'icon128.png',
-      title: found.length === 1
-        ? (deals.length ? T`疑似便宜！${first.query}` : T`新上架：${first.query}`)
-        : (deals.length ? T`${found.length} 件新上架（${deals.length} 件低於行情）` : T`${found.length} 件新上架`),
-      message: found.length === 1
-        ? `${tag(first)}${first.title}｜${first.priceLabel}｜${first.source}`
-        : found.slice(0, 3).map(i => `${tag(i)}${i.title}（${i.priceLabel}）`).join('\n'),
-      priority: deals.length ? 2 : 1,
-      requireInteraction: !!notifySticky,
-    });
-  }
+  await notifyNew(found);
   return { found: found.length };
+}
+
+// ---------- 系統通知 ----------
+// Mac 的通知只顯示標題、一段文字、一行小字和一張小圖，所以：
+//   每件一則（預設）：最多 3 件各一則（標題是價格和平台，內文是商品名稱，小圖是商品照片，點了打開商品頁），
+//                    其餘併成一則彙總（點了打開「新上架」）
+//   只要一則彙總：全部併成一則
+const MAX_ITEM_NOTES = 3;
+const srcOf = name => Object.values(SOURCES).find(s => s.name === name);
+
+// 標題：€ 289（DKK 2.150）· DBA DK
+function itemTitle(it) {
+  const s = srcOf(it.source);
+  const where = s && s.cc !== 'EU' ? `${it.source} ${s.cc}` : it.source;
+  const price = it.priceLabel ? it.priceLabel + (it.localLabel ? `（${it.localLabel}）` : '') : '';
+  return [price, where].filter(Boolean).join(' · ');
+}
+const dealTag = it => (it.deal?.kind === 'deal' ? T`低於行情 ${it.deal.pct}%` : '');
+// 彙總內文：Leica M6 ×12 · 分類：底片相機 ×41
+function countByWatch(items) {
+  const n = new Map();
+  for (const it of items) n.set(it.query, (n.get(it.query) || 0) + 1);
+  return [...n].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([q, c]) => `${q} ×${c}`).join(' · ');
+}
+
+// 建立通知；商品照片讀不到時（網站擋、網址失效）改用插件圖示
+async function createNote(id, opts, image) {
+  if (image && /^https:\/\//.test(image)) {
+    try { return await chrome.notifications.create(id, { ...opts, iconUrl: image }); } catch {}
+  }
+  return chrome.notifications.create(id, { ...opts, iconUrl: 'icon128.png' });
+}
+
+// 點通知要打開的商品頁：背景程式隨時可能被 Chrome 暫停，所以存在 session 儲存區
+async function rememberUrl(id, url) {
+  const { noteUrls = {} } = await chrome.storage.session.get('noteUrls');
+  const keep = Object.entries(noteUrls).slice(-30);
+  await chrome.storage.session.set({ noteUrls: Object.fromEntries([...keep, [id, url]]) });
+}
+
+async function notifyNew(found) {
+  const { notifyOn = true, notifySticky = false, notifyMode = 'each', notifyDealsOnly = false } =
+    await chrome.storage.local.get(['notifyOn', 'notifySticky', 'notifyMode', 'notifyDealsOnly']);
+  if (!notifyOn || !found.length) return;
+  // 低於行情的排前面，其他照上架時間
+  let list = [...found].sort((a, b) => (b.deal?.kind === 'deal') - (a.deal?.kind === 'deal') || (b.ts || 0) - (a.ts || 0));
+  if (notifyDealsOnly) list = list.filter(i => i.deal?.kind === 'deal');
+  if (!list.length) return;
+  const base = { type: 'basic', requireInteraction: !!notifySticky };
+  const stamp = Date.now();
+  const each = notifyMode !== 'summary' || list.length === 1;
+  const shown = each ? list.slice(0, MAX_ITEM_NOTES) : [];
+  const rest = list.length - shown.length;
+  // 先建彙總、再從第 3 件建到第 1 件：通知中心最新的在最上面，第 1 件會在最上面
+  if (rest > 0) {
+    const deals = list.filter(i => i.deal?.kind === 'deal').length;
+    const title = shown.length
+      ? T`還有 ${rest} 件新上架`
+      : (deals ? T`${list.length} 件新上架（${deals} 件低於行情）` : T`${list.length} 件新上架`);
+    await createNote(`new-${stamp}`, {
+      ...base,
+      title,
+      message: countByWatch(shown.length ? list.slice(shown.length) : list),
+      contextMessage: T`點這裡打開「新上架」`,
+      priority: deals && !shown.length ? 2 : 0,
+    }).catch(e => console.warn('notify', e));
+  }
+  for (let i = shown.length - 1; i >= 0; i--) {
+    const it = shown[i];
+    const id = `item-${stamp}-${i}`;
+    if (it.url) await rememberUrl(id, it.url).catch(() => {});
+    await createNote(id, {
+      ...base,
+      title: itemTitle(it) || T`新上架`,
+      message: it.title || '',
+      contextMessage: [T`追蹤：${it.query}`, dealTag(it)].filter(Boolean).join(' · '),
+      priority: it.deal?.kind === 'deal' ? 2 : 1,
+    }, it.image).catch(e => console.warn('notify', e));
+  }
 }
 
 // 測試通知：讓你確認 Mac 有沒有允許 Chrome 跳通知
@@ -230,11 +290,13 @@ async function testNotify() {
   const level = await chrome.notifications.getPermissionLevel();
   if (level !== 'granted') return { level };
   const { notifySticky = false } = await chrome.storage.local.get('notifySticky');
+  // 跟真正的新上架通知長得一樣（只是用插件圖示代替商品照片）
   const id = await chrome.notifications.create('test-' + Date.now(), {
     type: 'basic',
     iconUrl: 'icon128.png',
-    title: T`測試通知：新上架`,
-    message: T`Leica M6｜€ 1.450｜Marktplaats\n有新商品時會像這樣通知你`,
+    title: T`€ 1.450 · Marktplaats NL`,
+    message: T`測試通知：Leica M6 0.72 black chrome`,
+    contextMessage: T`有新商品時會像這樣通知你，點通知會打開商品頁`,
     requireInteraction: !!notifySticky,
   });
   return { level, id };
@@ -245,7 +307,16 @@ async function updateBadge(n) {
   await chrome.action.setBadgeText({ text: n ? String(n) : '' });
 }
 
-chrome.notifications.onClicked.addListener(id => {
+// 點單件商品的通知：打開商品頁；點彙總或舊的通知：打開「新上架」
+chrome.notifications.onClicked.addListener(async id => {
   chrome.notifications.clear(id);
-  openPage('#new');
+  const { noteUrls = {} } = await chrome.storage.session.get('noteUrls').catch(() => ({}));
+  const url = noteUrls[id];
+  if (url && /^https?:\/\//.test(url)) {
+    const win = await chrome.windows.getLastFocused().catch(() => null);
+    await chrome.tabs.create({ url, ...(win?.id ? { windowId: win.id } : {}) }).catch(() => openPage('#new'));
+    if (win?.id) chrome.windows.update(win.id, { focused: true }).catch(() => {});
+  } else {
+    openPage('#new');
+  }
 });

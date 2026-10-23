@@ -23,11 +23,11 @@ A Chrome extension that brings Europe's second-hand marketplaces together in one
 
 - 一個搜尋框搜所有勾選的平台，結果合併排序；也可以只在某個分類裡搜尋（例如在「鏡頭」裡找 Schneider）
 - 外幣依歐洲央行匯率換成歐元，同時顯示當地原價
-- 分類瀏覽：內建底片相機、鏡頭、麥克風、錄音機、耳機、服飾、素人賣家，也可以自訂任何分類
+- 分類瀏覽：從分類目錄（相機、音響、樂器、家具、服飾、單車、唱片與書、收藏，共 40 類）挑自己的分類，對應到各平台自己的分類；不要的可以刪，也可以用關鍵字自訂
 - 格狀或表格式列表（大圖、平台、價格、上架時間），往下捲自動載入更多
 - 價格篩選、排除字詞、只看二手、隱藏只能面交
 - Marktplaats／2dehands「Bieden」商品會讀出最低出價
-- 追蹤搜尋或分類，有新上架時跳出系統通知（可以關掉）
+- 追蹤搜尋或分類，有新上架時跳出系統通知：一件一則，帶照片和價格，點了打開商品頁（可以改成一則彙總或關掉）
 - 收藏商品並加備註；已賣掉或下架的收藏會自動移除（可以放回）
 - 中英文介面、匯出／匯入備份
 
@@ -61,11 +61,11 @@ Vinted, eBay.de, Marktplaats, 2dehands, Kleinanzeigen, DBA, Blocket, Tori, willh
 
 - One search box for every ticked marketplace, merged into one page; optionally search within one category (e.g. Schneider in "Lenses")
 - Prices converted to euros at the European Central Bank rate, local price shown too
-- Browse categories without a keyword: built-in film cameras, lenses, microphones, recorders, headphones, clothing and "Attic finds", plus any category you create
+- Browse categories without a keyword: pick your own from a catalog of 40 (cameras, audio, instruments, furniture, clothing, bikes, records and books, collectibles), each mapped to the marketplaces' own categories; remove any you don't need or make your own with keywords
 - Grid or table-style list (large photo, marketplace, price, listing date), with automatic loading as you scroll
 - Price filter, exclude words, used-only and hide-pickup-only switches
 - Minimum bids for Marktplaats / 2dehands "Bieden" listings
-- Watch a search or category and get a system notification for new listings (can be turned off)
+- Watch a search or category and get a system notification for new listings: one per item with photo and price, click to open the listing (or one summary, or off)
 - Save listings with notes; sold or removed listings leave your saved list automatically (you can put them back)
 - English and Chinese interface; backup export / import
 

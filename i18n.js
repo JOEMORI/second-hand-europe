@@ -29,7 +29,7 @@ export function T(strings, ...vals) {
 
 export const tr = s => (LANG === 'en' && s && EN[s] != null ? EN[s] : s);
 
-// 翻譯 HTML 裡寫死的文字和 placeholder / title
+// 翻譯 HTML 裡寫死的文字和 placeholder / title / aria-label
 export function translateDom(root = document.body) {
   if (LANG !== 'en') return;
   document.documentElement.lang = 'en';
@@ -40,8 +40,8 @@ export function translateDom(root = document.body) {
     const raw = n.nodeValue, key = raw.trim();
     if (key && EN[key] != null) n.nodeValue = raw.replace(key, EN[key]);
   }
-  root.querySelectorAll('[placeholder],[title]').forEach(el => {
-    for (const attr of ['placeholder', 'title']) {
+  root.querySelectorAll('[placeholder],[title],[aria-label]').forEach(el => {
+    for (const attr of ['placeholder', 'title', 'aria-label']) {
       const v = el.getAttribute(attr);
       if (v && EN[v] != null) el.setAttribute(attr, EN[v]);
     }
