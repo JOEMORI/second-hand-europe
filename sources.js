@@ -98,7 +98,7 @@ export const CATEGORIES = [
     map: {
       mp: { l1: 31, l2: 480 }, tdh: { l1: 31, l2: 480 },
       vinted: { catalogs: [3076] },
-      ka: { path: 's-foto', c: 'c245', attr: 'foto.art_s:camera', q: 'analog' },
+      ka: { path: 's-foto', c: 'c245', attr: 'foto.art_s:camera', q: 'analog', narrow: true },
       ebay: { cat: 15230, q: 'kamera' },
     },
   },
@@ -116,16 +116,16 @@ export const CATEGORIES = [
     map: {
       mp: { l1: 728, l2: 757 }, tdh: { l1: 728, l2: 757 },
       vinted: { catalogs: [5103] },
-      ka: { path: 's-musikinstrumente', c: 'c74', q: 'mikrofon' },
+      ka: { path: 's-musikinstrumente', c: 'c74', q: 'mikrofon', narrow: true },
       ebay: { cat: 29946, q: 'mikrofon' },
     },
   },
   {
     key: 'rec', name: '錄音機', sub: 'Recorders · Rekorder（含卡帶錄音機）',
     map: {
-      mp: { l1: 31, l2: 1117, q: 'recorder' }, tdh: { l1: 31, l2: 1117, q: 'recorder' },
-      vinted: { catalogs: [3566, 4833], q: 'recorder' },
-      ka: { path: 's-audio-hifi', c: 'c172', q: 'recorder' },
+      mp: { l1: 31, l2: 1117, q: 'recorder', narrow: true }, tdh: { l1: 31, l2: 1117, q: 'recorder', narrow: true },
+      vinted: { catalogs: [3566, 4833], q: 'recorder', narrow: true },
+      ka: { path: 's-audio-hifi', c: 'c172', q: 'recorder', narrow: true },
       ebay: { cat: 15052, q: 'recorder' },
     },
   },
@@ -136,6 +136,17 @@ export const CATEGORIES = [
       vinted: { catalogs: [3678] },
       ka: { path: 's-audio-hifi', c: 'c172', attr: 'audio_hifi.art_s:lautsprecher_kopfhoerer', q: 'kopfhoerer' },
       ebay: { cat: 112529, q: 'kopfhörer' },
+    },
+  },
+  {
+    // 服飾：只有這 5 個平台有對應的服飾分類，其他平台不搜（只用品牌名搜尋會混進一堆不相干的東西）
+    key: 'cloth', name: '服飾', sub: 'Kleding · Kleidung（Vinted、Marktplaats、2dehands、Kleinanzeigen、eBay）',
+    map: {
+      mp: [{ l1: 621 }, { l1: 1776 }], tdh: [{ l1: 621 }, { l1: 1776 }],
+      vinted: { catalogs: [1904, 5] },
+      ka: { path: 's-mode-beauty', c: 'c153' },
+      // eBay 的分類頁沒有關鍵字時讀不到商品：只有搜尋品牌或型號時才用
+      ebay: { cat: 11450, needQ: true },
     },
   },
   {
@@ -359,7 +370,7 @@ function adevintaTs(label, rank) {
 async function fetchAdevinta(spec, page, opts, base, name, prefix) {
   const lo = num(opts?.price?.min), hi = num(opts?.price?.max);
   const url = withPrice => `${base}/lrp/api/search?` +
-    (spec.l1 ? `l1CategoryId=${spec.l1}&l2CategoryIds=${spec.l2}&` : '') +
+    (spec.l1 ? `l1CategoryId=${spec.l1}&` + (spec.l2 ? `l2CategoryIds=${spec.l2}&` : '') : '') +
     (spec.q || spec.query ? `query=${enc(spec.q || spec.query)}&` : '') +
     (withPrice ? `attributeRanges[]=PriceCents:${lo != null ? Math.round(lo * 100) : 'null'}:${hi != null ? Math.round(hi * 100) : 'null'}&` : '') +
     `limit=40&offset=${(page - 1) * 40}&sortBy=SORT_INDEX&sortOrder=DECREASING`;
@@ -507,15 +518,49 @@ async function fetchVinted(spec, page, opts) {
 }
 
 // Vinted 有防機器人機制，常常擋掉插件直接送出的請求。依序嘗試：
-// 1. 直接讀取  2. 在看不見的框架裡打開頁面讀取  3. 請背景程式在最小化視窗裡讀取
+// 1. 直接讀取  2. 在看不見的框架裡打開頁面讀取
 // 同一個網址 5 分鐘內重用結果，切換價格再切回來不用重讀。
 const vintedCache = new Map();
 async function vintedItems(url, background, isStale) {
   const hit = vintedCache.get(url);
   if (hit && Date.now() - hit.at < 5 * 60e3) return hit.items;
-  const items = await vintedLoad(url, background, isStale);
+  const items = await vintedGate(() => {
+    // 排隊期間你換了分類或價格：這次的結果用不到了，不用讀
+    if (isStale?.()) throw new Error(T`已取消`);
+    return vintedLoad(url, background, isStale);
+  });
   vintedCache.set(url, { at: Date.now(), items });
   return items;
+}
+
+// 同時最多 2 個 Vinted 讀取。Vinted 每頁約 3.5 MB，一次讀太多頁會拖慢瀏覽器，
+// 也容易被 Vinted 當成機器人，連帶讓你自己開著的 Vinted 分頁跳出驗證。
+let vintedSlots = 2;
+const vintedWaiters = [];
+async function vintedGate(fn) {
+  if (vintedSlots > 0) vintedSlots--;
+  else await new Promise(r => vintedWaiters.push(r));
+  try {
+    return await fn();
+  } finally {
+    const next = vintedWaiters.shift();
+    if (next) next(); else vintedSlots++;
+  }
+}
+
+// 更新 Vinted 登入狀態：同一時間只送一次，10 分鐘內不重複。
+// 好幾個讀取同時各自更新的話，Vinted 會把舊的登入憑證作廢，
+// 你自己開著的 Vinted 分頁就會一直跳「session refresh」重新載入。
+let vintedRefreshing = null;
+let vintedRefreshedAt = 0;
+function refreshVintedSession() {
+  if (vintedRefreshing) return vintedRefreshing;
+  if (Date.now() - vintedRefreshedAt < 10 * 60e3) return Promise.resolve(false);
+  vintedRefreshedAt = Date.now();
+  vintedRefreshing = fetch('https://www.vinted.nl/web/api/auth/refresh', { method: 'POST', credentials: 'include', signal: timeoutSignal(10000) })
+    .then(r => r.ok).catch(() => false)
+    .finally(() => { vintedRefreshing = null; });
+  return vintedRefreshing;
 }
 
 async function vintedLoad(url, background, isStale) {
@@ -535,7 +580,7 @@ async function vintedLoad(url, background, isStale) {
     if (r.list) return r.list;
     if (r.expired) {
       // 跟 Vinted 網頁一樣，先更新登入狀態再讀一次
-      await fetch('https://www.vinted.nl/web/api/auth/refresh', { method: 'POST', credentials: 'include', signal: timeoutSignal(10000) }).catch(() => {});
+      await refreshVintedSession();
       r = await direct();
       if (r.list) return r.list;
     }
@@ -546,13 +591,11 @@ async function vintedLoad(url, background, isStale) {
   const f = await readViaFrame(url, isStale);
   if (f?.items) return f.items;
   if (f?.blocked) throw new Error(T`Vinted 要求人機驗證，請在 Chrome 打開 vinted.nl 完成驗證後再試`);
-  // 背景追蹤不開視窗；只有你自己在搜尋頁操作時才用最小化視窗當最後手段
   if (background) throw new Error(T`背景檢查暫時讀不到 Vinted，下次檢查會再試`);
-  // 你已經換了分類或價格：這次的結果用不到了，不要再開視窗
   if (isStale?.()) throw new Error(T`已取消`);
-  const r = await chrome.runtime.sendMessage({ type: 'vintedViaTab', url, background: false });
-  if (r?.items) return r.items;
-  throw new Error(T`${r?.error || tr('讀不到商品')}（${why}）`);
+  // v1.4 起不再另外開最小化視窗讀 Vinted：那個視窗會完整載入 Vinted 網頁和程式，
+  // 是 Chrome 卡住、視窗拖不動的主要嫌疑。讀不到就請你在 Chrome 打開 vinted.nl 一次再試。
+  throw new Error(T`Vinted 暫時擋住了讀取，請在 Chrome 打開 vinted.nl 一次再搜尋（${why}）`);
 }
 
 // 在目前頁面放一個看不見的框架打開網頁（Vinted、eBay），由 frame-reader.js 讀出資料傳回來。
@@ -669,7 +712,7 @@ async function fetchKleinanzeigen(spec, page, opts) {
     const slug = enc(spec.search.trim().replace(/\s+/g, '-'));
     url = `https://www.kleinanzeigen.de/s-sortierung:neuste/${seite}${slug}/k0`;
   } else {
-    const tail = spec.q ? `${enc(spec.q)}/k0${spec.c}` : `${spec.slug}/${spec.c}`;
+    const tail = spec.q ? `${enc(spec.q)}/k0${spec.c}` : spec.slug ? `${spec.slug}/${spec.c}` : spec.c;
     url = `https://www.kleinanzeigen.de/${spec.path}/sortierung:neuste/${seite}${tail}${spec.attr ? '+' + spec.attr : ''}`;
   }
   return withRank(parseKleinanzeigen(await getHtml(url)), page);
@@ -748,7 +791,7 @@ export function parseKleinanzeigen(doc) {
 // ---------- eBay 德國 ----------
 async function fetchEbay(spec, page, opts) {
   const lo = num(opts?.price?.min), hi = num(opts?.price?.max);
-  const url = `https://www.ebay.de/sch/i.html?_nkw=${enc(spec.q)}` +
+  const url = `https://www.ebay.de/sch/i.html?_nkw=${enc(spec.q || '')}` +
     (spec.cat ? `&_sacat=${spec.cat}` : '') +
     `&_sop=10&_ipg=60&_pgn=${page}` +
     (opts?.used ? '&LH_ItemCondition=3000' : '') + // 3000：只看二手
@@ -1383,22 +1426,31 @@ export function parseWords(text) {
 }
 
 // 分類在各平台要跑哪些工作。工作 id：內建分類是平台代號；自訂分類是「平台::第幾個關鍵字」
-export function catTasks(cat, sourceKeys, o = {}) {
+// q：在分類裡再用關鍵字找（例如「鏡頭」分類裡找 schneider）。
+//   有平台分類的：在該分類裡搜這個關鍵字；分類太廣、原本靠字詞縮小範圍的（narrow），兩者一起搜。
+//   沒有平台分類的：關鍵字加上當地語言的分類字詞（schneider objektiv）。
+export function catTasks(cat, sourceKeys, o = {}, q = '') {
   const tasks = [];
   if (!cat) return tasks;
+  q = String(q || '').trim();
+  const withQ = w => (q ? `${q} ${w}` : w);
   for (const k of (sourceKeys || []).filter(x => SOURCES[x])) {
     const s = SOURCES[k];
     if (cat.custom) {
       const words = cat.words || [];
       // 多個關鍵字時每個只抓一頁，需要更多再按「載入更多」
-      words.forEach((w, i) => tasks.push({ id: `${k}::${i}`, src: k, tag: words.length > 1 ? w : null, pages: words.length > 1 ? 1 : undefined, fetch: page => s.search(w, page, o) }));
+      words.forEach((w, i) => tasks.push({ id: `${k}::${i}`, src: k, tag: words.length > 1 ? w : null, pages: words.length > 1 ? 1 : undefined, fetch: page => s.search(withQ(w), page, o) }));
     } else if (cat.map?.[k] && s.browse) {
-      tasks.push({ id: k, src: k, fetch: page => s.browse(cat.map[k], page, o) });
+      const specs = [].concat(cat.map[k]).filter(spec => q || !spec.needQ);
+      specs.forEach((spec, i) => {
+        const sp = q ? { ...spec, q: spec.narrow && spec.q ? `${q} ${spec.q}` : q } : spec;
+        tasks.push({ id: specs.length > 1 ? `${k}::m${i}` : k, src: k, pages: specs.length > 1 ? 1 : undefined, fetch: page => s.browse(sp, page, o) });
+      });
     } else {
       const w = catWords(k, cat.key);
       // 多組字詞：每組各搜一次，每次只抓一頁，避免請求太多
-      if (Array.isArray(w)) w.forEach((x, i) => tasks.push({ id: `${k}::${i}`, src: k, tag: x, pages: 1, fetch: page => s.search(x, page, o) }));
-      else if (w) tasks.push({ id: k, src: k, fetch: page => s.search(w, page, o) });
+      if (Array.isArray(w)) w.forEach((x, i) => tasks.push({ id: `${k}::${i}`, src: k, tag: x, pages: 1, fetch: page => s.search(withQ(x), page, o) }));
+      else if (w) tasks.push({ id: k, src: k, fetch: page => s.search(withQ(w), page, o) });
     }
   }
   return tasks;
@@ -1420,7 +1472,7 @@ export function catHow(cat, k) {
 export function browseAll(cat, sourceKeys, onProgress, opts = {}) {
   const c = typeof cat === 'string' ? CATEGORIES.find(x => x.key === cat) : cat;
   if (!c) return Promise.resolve({ items: [], errors: [T`找不到分類`], paging: {} });
-  let tasks = catTasks(c, pickKeys(sourceKeys), searchOpts(opts));
+  let tasks = catTasks(c, pickKeys(sourceKeys), searchOpts(opts), opts.q);
   // 載入更多：只跑還有下一頁的工作
   if (opts.start && Object.keys(opts.start).length) tasks = tasks.filter(t => opts.start[t.id] != null);
   if (!tasks.length) return Promise.resolve({ items: [], errors: [], paging: {} });

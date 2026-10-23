@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_appName__",
   "short_name": "__MSG_appShort__",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "__MSG_appDesc__",
   "default_locale": "en",
   "permissions": [
@@ -10,7 +10,6 @@
     "alarms",
     "notifications",
     "offscreen",
-    "scripting",
     "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
@@ -27,9 +26,10 @@
     "https://www.olx.pt/*",
     "https://www.olx.ro/*",
     "https://www.olx.bg/*",
-    "https://www.bazos.cz/*",
-    "https://www.bazos.sk/*",
+    "https://*.bazos.cz/*",
+    "https://*.bazos.sk/*",
     "https://hades.subito.it/*",
+    "https://www.subito.it/*",
     "https://api.frankfurter.dev/*",
     "https://www.vatera.hu/*"
   ],

@@ -12,22 +12,35 @@
     const challenge = h => /captcha-delivery|splashui|awswaf|challenge-platform|pardon our interruption/i.test(h);
     const html = document.documentElement.outerHTML;
     if (ready(html) || !challenge(html)) {
-      chrome.runtime.sendMessage({ type: 'pageFrame', req, html }).catch(() => {});
+      // 只交回商品需要的部分：拿掉 script、style 等（eBay 一頁有一大半是程式碼），
+      // 傳給插件的資料小很多，瀏覽器就不用搬一大包資料
+      document.querySelectorAll('script, style, noscript, template, link, iframe').forEach(n => n.remove());
+      chrome.runtime.sendMessage({ type: 'pageFrame', req, html: document.documentElement.outerHTML }).catch(() => {});
     } else {
       chrome.runtime.sendMessage({ type: 'pageFrame', req, blocked: true }).catch(() => {});
     }
     return;
   }
 
+  // 只讀頁面裡帶商品資料的那幾段 script，不把整頁 3 MB 多的 HTML 轉成字串再搜尋。
+  // 框架裡網站的程式不會執行，頁面載完就不會再變，讀一次就夠了。
   function extract() {
-    const html = document.documentElement.innerHTML;
-    if (/captcha-delivery|geo\.captcha|datadome/i.test(html) && !html.includes('__next_f')) return { blocked: true };
     const re = /self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)/g;
-    let m, flight = '';
-    while ((m = re.exec(html))) { try { flight += JSON.parse(m[1]); } catch (e) {} }
+    let flight = '';
+    for (const s of document.scripts) {
+      const t = s.textContent;
+      if (!t || !t.includes('__next_f')) continue;
+      re.lastIndex = 0;
+      let m;
+      while ((m = re.exec(t))) { try { flight += JSON.parse(m[1]); } catch (e) {} }
+    }
     const key = '"items":{"items":[';
     const i = flight.indexOf(key);
-    if (i < 0) return null;
+    if (i < 0) {
+      const blocked = [...document.scripts, ...document.querySelectorAll('iframe')].some(e => /captcha-delivery|geo\.captcha|datadome/i.test(e.src || ''))
+        || /captcha-delivery|geo\.captcha/i.test(document.head?.innerHTML.slice(0, 30000) || '');
+      return blocked ? { blocked: true } : null;
+    }
     const start = i + key.length - 1;
     let depth = 0, inStr = false, esc = false, j = start;
     for (; j < flight.length; j++) {
@@ -43,10 +56,10 @@
   let tries = 0;
   const tick = () => {
     const r = extract();
-    if (r || ++tries >= 12) {
+    if (r || ++tries >= 2) {
       chrome.runtime.sendMessage({ type: 'pageFrame', req, ...(r || { error: 'noitems' }) }).catch(() => {});
     } else {
-      setTimeout(tick, 500);
+      setTimeout(tick, 400);
     }
   };
   tick();

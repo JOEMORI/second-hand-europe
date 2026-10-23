@@ -28,6 +28,7 @@
     <symbol id="i-cat-mic" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="11.5" y="3.5" width="9" height="15" rx="4.5"/><path d="M7.5 15a8.5 8.5 0 0 0 17 0M16 23.5v5M11.5 28.5h9M11.5 9h3M11.5 13h3"/></g></symbol>
     <symbol id="i-cat-rec" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="7.5" width="25" height="17" rx="2.5"/><circle cx="11" cy="15" r="3"/><circle cx="21" cy="15" r="3"/><path d="M11 18h10M8 24.5l2-3.5h12l2 3.5"/></g></symbol>
     <symbol id="i-cat-hp" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M5.5 19v-3a10.5 10.5 0 0 1 21 0v3"/><rect x="4" y="18" width="6" height="9.5" rx="2.5"/><rect x="22" y="18" width="6" height="9.5" rx="2.5"/></g></symbol>
+    <symbol id="i-cat-cloth" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 4.5L4 8.5l2.5 6 3.5-1.5V27.5h12V13l3.5 1.5 2.5-6-8-4c0 2.2-1.8 4-4 4s-4-1.8-4-4z"/></g></symbol>
     <symbol id="i-cat-naive" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M4.5 13.5L16 5l11.5 8.5"/><path d="M7.5 11.5V27h17V11.5"/><rect x="11" y="17" width="10" height="7" rx="1.2"/><circle cx="16" cy="20.5" r="1.8"/><path d="M13 17l1-1.6h4l1 1.6"/></g></symbol>
     <symbol id="i-cat-custom" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4.5 15.5V5.5a1 1 0 0 1 1-1h10l12 12-11 11z"/><circle cx="10.5" cy="10.5" r="2.2"/></g></symbol>
     <symbol id="i-plus" viewBox="0 0 32 32"><path d="M16 7v18M7 16h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
@@ -59,7 +60,7 @@
       <div id="sourcePills" class="pills"></div>
     </div>
 
-    <div class="side-section">
+    <div class="side-section" id="sidePrice">
       <h3>價格</h3>
       <div class="pricerange">
         <label><span>€</span><input id="min" type="number" min="0" placeholder="最低"></label>
@@ -119,6 +120,7 @@
         <div class="searchbar">
           <svg class="ico"><use href="#i-search"/></svg>
           <input id="q" type="search" placeholder="搜尋商品，例如 Rolleiflex 2.8F" required>
+          <select id="qCat" class="qcat" title="只在這個分類裡搜尋，例如在「鏡頭」裡找 Schneider"></select>
           <button type="submit" class="primary">搜尋</button>
         </div>
       </form>
@@ -170,7 +172,7 @@
       <section id="tab-browse" hidden>
         <div class="section-head">
           <h2>分類瀏覽</h2>
-          <p>不用關鍵字，直接看各平台這個分類的最新上架。左側的平台、價格、排除字詞都會套用。沒有對應分類的平台會用當地語言的關鍵字搜尋。「素人賣家」用各國語言搜尋老相機、遺物、閣樓找到的這類標題，適合撿漏。</p>
+          <p>不用關鍵字，直接看各平台這個分類的最新上架；選了分類後也可以在分類裡搜尋品牌或型號。左側勾選的平台和排除字詞會套用，價格用下面的價格列設定（跟搜尋結果的價格分開）。沒有對應分類的平台會用當地語言的關鍵字搜尋。「素人賣家」用各國語言搜尋老相機、遺物、閣樓找到的這類標題，適合撿漏。</p>
         </div>
         <div id="catList" class="cats"></div>
         <form id="catEditor" class="cat-editor" hidden>
@@ -185,6 +187,12 @@
             <button type="button" id="ceDelete" class="ghost small danger">刪除分類</button>
           </div>
         </form>
+        <form id="bSearch" class="bsearch" autocomplete="off" hidden>
+          <svg class="ico"><use href="#i-search"/></svg>
+          <input id="bQ" type="search" placeholder="在這個分類裡搜尋，例如 schneider">
+          <button type="submit" class="ghost small">搜尋</button>
+          <button type="button" id="bQClear" class="ghost small" hidden>清除</button>
+        </form>
         <div class="pricebar">
           <span class="pb-label">價格</span>
           <div id="pricePresets" class="seg"></div>
@@ -193,7 +201,7 @@
             <i>–</i>
             <label><span>€</span><input id="bMax" type="number" min="0" placeholder="最高"></label>
           </div>
-          <span class="pb-note">直接交給各平台篩選，每一頁都是這個價格區間的商品</span>
+          <span class="pb-note">只套用在分類瀏覽，直接交給各平台篩選</span>
         </div>
         <div class="toolbar sticky">
           <div class="tb-row">
@@ -230,7 +238,13 @@
             <h2>新上架</h2>
             <p>加入追蹤之後才上架的商品會出現在這裡。</p>
           </div>
-          <button id="clearNew" class="ghost small">清空</button>
+          <div class="head-tools">
+            <div class="viewtoggle" role="group">
+              <button type="button" data-view="grid" title="格狀"><svg class="ico"><use href="#i-grid"/></svg></button>
+              <button type="button" data-view="list" title="列表"><svg class="ico"><use href="#i-list"/></svg></button>
+            </div>
+            <button id="clearNew" class="ghost small">清空</button>
+          </div>
         </div>
         <div id="newList" class="grid"></div>
       </section>
@@ -242,13 +256,29 @@
             <h2>收藏</h2>
             <p>點商品圖片右上角的星號加入收藏，可以寫備註方便比較。</p>
           </div>
+          <div class="head-tools">
+          <div class="viewtoggle" role="group" data-scope="favs">
+            <button type="button" data-view="grid" title="格狀"><svg class="ico"><use href="#i-grid"/></svg></button>
+            <button type="button" data-view="list" title="列表"><svg class="ico"><use href="#i-list"/></svg></button>
+          </div>
           <select id="favSort">
             <option value="time">最近加入</option>
             <option value="asc">價格低到高</option>
             <option value="desc">價格高到低</option>
           </select>
+          </div>
+        </div>
+        <div class="fav-tools">
+          <label class="switch" title="定時檢查收藏的商品，已賣掉或下架的會自動移出收藏"><input type="checkbox" id="favAuto" checked><span></span>自動移除已下架的收藏</label>
+          <button type="button" id="favCheck" class="ghost small">立即檢查</button>
+          <span id="favCheckStatus" class="muted" role="status"></span>
         </div>
         <div id="favList" class="favlist"></div>
+        <details id="favRemovedBox" class="fav-removed" hidden>
+          <summary>最近自動移除（<span id="favRemovedCount">0</span>）</summary>
+          <p class="sub">這些商品在網站上已經賣掉或下架。如果判斷錯了，按「放回收藏」，之後不會再自動移除這一件。紀錄保留 30 天。</p>
+          <div id="favRemovedList" class="favlist"></div>
+        </details>
       </section>
 
       <!-- 追蹤 -->
@@ -256,7 +286,7 @@
         <div class="section-head row">
           <div>
             <h2>追蹤清單</h2>
-            <p>Chrome 開著時才會檢查。有新上架會跳出系統通知，工具列圖示也會顯示數字。</p>
+            <p>Chrome 開著時才會檢查（視窗縮小也可以）。有新上架會跳出系統通知，工具列圖示也會顯示數字。</p>
           </div>
           <div class="tools">
             <select id="interval">
@@ -267,6 +297,13 @@
             </select>
             <button id="checkNow" class="ghost small">立即檢查</button>
           </div>
+        </div>
+        <div class="notify-box">
+          <label class="switch" title="Chrome 視窗縮小或關掉（但沒有結束 Chrome）時也會通知"><input type="checkbox" id="notifyOn" checked><span></span>有新上架時跳出系統通知</label>
+          <label class="switch" title="通知會一直留在螢幕右上角，直到你按掉"><input type="checkbox" id="notifySticky"><span></span>通知停留到我按掉</label>
+          <button type="button" id="notifyTest" class="ghost small">傳一則測試通知</button>
+          <span id="notifyMsg" class="muted" role="status"></span>
+          <p class="tiny">通知會列出新商品的名稱、價格和平台，點通知會打開「新上架」。只要 Chrome 沒有完全結束（視窗縮小或關掉都可以）就會檢查。<br>按了測試卻沒看到通知：到 Mac 的「系統設定 → 通知 → Google Chrome」打開「允許通知」，樣式選「提示」，通知就會停在畫面上。</p>
         </div>
         <div id="watchList"></div>
       </section>

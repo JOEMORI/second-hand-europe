@@ -5,7 +5,7 @@ import { i18nReady, setLang } from './i18n.js';
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.target !== 'offscreen') return;
   // 背景檢查只抓第一頁（依最新排序，新上架一定在最前面），並標記為背景，讓 Vinted 備援控制頻率
-  const opts = { pages: 1, price: msg.price, used: msg.used, background: true };
+  const opts = { pages: 1, price: msg.price, used: msg.used, background: true, q: msg.q };
   const ready = i18nReady.then(() => setLang(msg.lang));
   let job;
   if (msg.type === 'searchMulti') job = ready.then(() => searchMulti(msg.subs, null, opts));

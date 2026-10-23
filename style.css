@@ -358,6 +358,12 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 
 /* ---------- 收藏 ---------- */
 .favlist { display: flex; flex-direction: column; gap: 10px; }
+.fav-tools { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: -6px 0 14px; font-size: 13px; }
+.fav-removed { margin-top: 22px; }
+.fav-removed summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 6px 0; }
+.fav-removed .sub { color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
+.fav.gone { opacity: .7; }
+.fav.gone .thumb img { filter: grayscale(1); }
 .fav { display: flex; gap: 16px; align-items: flex-start; background: var(--panel); border-radius: var(--radius); padding: 12px; box-shadow: 0 0 0 1px var(--line), var(--shadow-sm); }
 .fav .thumb { width: 112px; aspect-ratio: 1; flex: none; border-radius: var(--radius-sm); overflow: hidden; background: var(--sunken); }
 .fav .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -469,38 +475,74 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .viewtoggle button.on { background: var(--panel); color: var(--text); box-shadow: var(--shadow-sm); }
 
 /* ============================================================
-   列表模式
+   列表模式：表格式，參考 HiFi Shark（大圖、標題、平台、價格、上架時間各一欄）
    ============================================================ */
-.card .list-tags { display: none; }
-.grid.list { display: flex; flex-direction: column; gap: 6px; }
-.grid.list .card { flex-direction: row; align-items: stretch; border-radius: 10px; }
-.grid.list .card:hover { transform: none; }
-.grid.list .card .img { width: 88px; flex: none; aspect-ratio: 1 / 1; }
+.card .list-tags, .lc-site, .lc-price, .lc-date { display: none; }
+.list-head { display: none; }
+.list-head.show {
+  display: grid; grid-template-columns: 128px minmax(0, 1fr) 170px 140px 120px; gap: 0 20px;
+  padding: 0 18px 8px; font-size: 12.5px; font-weight: 700; color: var(--muted); letter-spacing: .02em;
+}
+.list-head button { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.list-head button:hover { color: var(--text); }
+.list-head button.on { color: var(--text); }
+.list-head .lh-date { text-align: right; justify-self: end; }
+.list-head .arrow { font-size: 10px; }
+.grid.list {
+  display: flex; flex-direction: column; gap: 0;
+  background: var(--panel); border-radius: var(--radius); box-shadow: 0 0 0 1px var(--line), var(--shadow-sm); overflow: hidden;
+}
+.grid.list .card {
+  display: grid; grid-template-columns: 128px minmax(0, 1fr) 170px 140px 120px; gap: 0 20px; align-items: center;
+  padding: 14px 18px; border-radius: 0; box-shadow: none; background: none; border-bottom: 1px solid var(--line);
+}
+.grid.list .card:last-child { border-bottom: 0; }
+.grid.list .card:hover { transform: none; box-shadow: none; background: color-mix(in srgb, var(--text) 3%, transparent); }
+.grid.list .card .img { width: 128px; aspect-ratio: 4 / 3; border-radius: 8px; }
 .grid.list .card:hover .img img { transform: none; }
 .grid.list .card .img .tag,
 .grid.list .card .img .badge-deal, .grid.list .card .img .badge-muted,
 .grid.list .card .img .badge-naive, .grid.list .card .img .badge-soft { display: none; }
-.grid.list .card .star { width: 24px; height: 24px; top: 4px; right: 4px; }
-.grid.list .card .star .ico { width: 13px; height: 13px; }
-.grid.list .card .body {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 20px; row-gap: 3px;
-  align-content: center; padding: 10px 16px;
-}
-.grid.list .card .body > * { grid-column: 1; }
-.grid.list .card .title { order: -2; -webkit-line-clamp: 1; font-weight: 550; font-size: 14px; margin: 0; }
-.grid.list .card .list-tags { order: -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.grid.list .card .price { grid-column: 2; grid-row: 1; text-align: right; font-size: 16px; }
-.grid.list .card .total { grid-column: 2; grid-row: 2; text-align: right; margin: 0; }
+.grid.list .card .star { width: 26px; height: 26px; top: 5px; right: 5px; opacity: 1; transform: none; }
+.grid.list .card .star .ico { width: 14px; height: 14px; }
+.grid.list .card .body { padding: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.grid.list .card .body > .price, .grid.list .card .body > .total, .grid.list .card .body > .meta:not(.q) { display: none; }
+.grid.list .card .title { -webkit-line-clamp: 2; font-size: 15px; font-weight: 500; line-height: 1.45; margin: 0; }
+.grid.list .card .list-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.grid.list .card .list-tags .src-inline { display: none; }
+.grid.list .card .list-tags .li-meta:first-of-type::before { content: none; margin: 0; }
 .grid.list .card .list-tags .badge-deal, .grid.list .card .list-tags .badge-muted,
 .grid.list .card .list-tags .badge-naive, .grid.list .card .list-tags .badge-soft {
   position: static; font-size: 10.5px; padding: 1px 7px; box-shadow: none;
 }
 .grid.list .card .list-tags .badge-soft { background: var(--sunken); }
+.grid.list .lc-site { display: flex; align-items: center; gap: 8px; font-size: 14px; min-width: 0; }
+.grid.list .lc-site span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grid.list .lc-price { display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; }
+.grid.list .lc-price b { font-size: 17px; font-weight: 750; color: var(--accent); }
+.grid.list .lc-price small { font-size: 11.5px; color: var(--muted); }
+.grid.list .lc-date { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 13.5px; text-align: right; font-variant-numeric: tabular-nums; }
+.grid.list .lc-date small { font-size: 11.5px; color: var(--faint); }
 .src-inline { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
 .src-inline::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
 .grid.list .card .meta { font-size: 12px; }
-.grid.list .card.is-deal { box-shadow: 0 0 0 1.5px var(--accent), var(--shadow-sm); }
-.grid.list.skel-host .card { height: 88px; }
+.grid.list .card.is-deal { box-shadow: inset 3px 0 0 var(--accent); }
+.grid.list.skel-host .card { height: 124px; }
+.li-meta { font-size: 12px; color: var(--muted); }
+.li-meta::before { content: '·'; margin-right: 6px; color: var(--faint); }
+.li-meta.pickup { color: color-mix(in srgb, var(--danger) 70%, var(--faint)); }
+@media (max-width: 1100px) {
+  .list-head.show, .grid.list .card { grid-template-columns: 104px minmax(0, 1fr) 140px 120px; }
+  .grid.list .card .img { width: 104px; }
+  .list-head .lh-date, .grid.list .lc-date { display: none; }
+}
+@media (max-width: 760px) {
+  .list-head.show { display: none; }
+  .grid.list .card { grid-template-columns: 84px minmax(0, 1fr) auto; gap: 0 12px; padding: 10px 12px; }
+  .grid.list .card .img { width: 84px; }
+  .grid.list .lc-site { display: none; }
+  .grid.list .card .list-tags .src-inline { display: inline-flex; }
+}
 
 /* ============================================================
    滑過預覽
@@ -523,16 +565,8 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 @media (max-width: 900px) {
   .toolbar.sticky { margin: -18px -16px 14px; padding: 10px 16px; }
   .tb-row { flex-wrap: wrap; }
-  .grid.list .card .img { width: 72px; }
   .preview { display: none; }
 }
-/* 列表模式：地點、時間、寄送方式併到同一行 */
-.grid.list .card .body > .meta:not(.q) { display: none; }
-.grid.list .card .img { width: 72px; }
-.grid.list .card .body { padding: 9px 16px; }
-.li-meta { font-size: 12px; color: var(--muted); }
-.li-meta::before { content: '·'; margin-right: 6px; color: var(--faint); }
-.li-meta.pickup { color: color-mix(in srgb, var(--danger) 70%, var(--faint)); }
 
 /* 語言切換：固定在側欄最底下，標題中英並列 */
 .side { padding-bottom: 20px; }
@@ -545,3 +579,42 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 
 /* 英文介面翻譯完成前先不顯示 */
 html.i18n-pending body { visibility: hidden; }
+
+/* ---------- v1.4：地區全選、分類內搜尋、搜尋框分類、精簡分類列 ---------- */
+.src-headrow { display: flex; align-items: center; gap: 2px; }
+.src-headrow .src-head { flex: 1; min-width: 0; }
+.src-all {
+  flex: none; border: 0; background: none; color: var(--faint); font-size: 11px; font-weight: 600;
+  padding: 3px 7px; border-radius: 6px; opacity: 0; transition: opacity .12s;
+}
+.src-group:hover .src-all, .src-all:focus-visible { opacity: 1; }
+.src-all:hover { color: var(--accent); background: var(--accent-soft); }
+@media (hover: none) { .src-all { opacity: 1; } }
+.qcat {
+  flex: none; max-width: 150px; border: 0; border-left: 1px solid var(--line); border-radius: 0;
+  background: none; color: var(--muted); font-size: 13.5px; padding: 6px 10px; margin-right: 4px; box-shadow: none !important;
+}
+.qcat.on { color: var(--accent); font-weight: 650; }
+.bsearch {
+  display: flex; align-items: center; gap: 10px; background: var(--panel); border-radius: var(--radius);
+  padding: 8px 10px 8px 14px; margin: -8px 0 12px; box-shadow: 0 0 0 1px var(--line), var(--shadow-sm);
+}
+.bsearch:focus-within { box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); }
+.bsearch > .ico { width: 16px; height: 16px; color: var(--faint); flex: none; }
+.bsearch input { flex: 1; min-width: 0; border: 0; background: none; box-shadow: none !important; padding: 6px 0; font-size: 14.5px; }
+.cats.compact { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.cats.compact .cat { flex-direction: row; align-items: center; gap: 8px; padding: 8px 14px 8px 11px; border-radius: 999px; }
+.cats.compact .cat:hover { transform: none; }
+.cats.compact .cat-ico { width: 18px; height: 18px; margin: 0; }
+.cats.compact .cat strong { font-size: 13.5px; font-weight: 650; }
+.cats.compact .cat small { display: none; }
+.cats.compact .cat.custom { padding-right: 38px; }
+.cats.compact .cat-edit { top: 50%; transform: translateY(-50%); right: 6px; width: 24px; height: 24px; }
+.head-tools { display: flex; align-items: center; gap: 10px; }
+.favgrid { display: grid; }
+.card .note-line { font-size: 12px; color: var(--muted); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notify-box {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; background: var(--panel); border-radius: var(--radius);
+  padding: 12px 14px; margin: -6px 0 16px; box-shadow: 0 0 0 1px var(--line), var(--shadow-sm); font-size: 13px;
+}
+.notify-box .tiny { width: 100%; margin: 0; }

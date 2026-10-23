@@ -1,5 +1,6 @@
 import { applyFilters, computeDeals, CATEGORIES } from './sources.js';
 import { T, tr, i18nReady, getLang, setLang } from './i18n.js';
+import { checkFavorites } from './favcheck.js';
 
 const PAGE = 'search.html';
 
@@ -24,9 +25,9 @@ async function searchMulti(subs, price, used) {
   return chrome.runtime.sendMessage({ target: 'offscreen', type: 'searchMulti', subs, price, used, lang: getLang() });
 }
 
-async function browseAll(category, sources, price) {
+async function browseAll(category, sources, price, q) {
   await ensureOffscreen();
-  return chrome.runtime.sendMessage({ target: 'offscreen', type: 'browseAll', category, sources, price, lang: getLang() });
+  return chrome.runtime.sendMessage({ target: 'offscreen', type: 'browseAll', category, sources, price, q, lang: getLang() });
 }
 
 // Vinted、eBay 頁面預設不准被嵌入。只有插件自己的頁面嵌入時，拿掉這個限制，
@@ -40,7 +41,9 @@ async function allowVintedFrame() {
         priority: 1,
         action: { type: 'modifyHeaders', responseHeaders: [
           { header: 'x-frame-options', operation: 'remove' },
-          { header: 'content-security-policy', operation: 'remove' },
+          // 換成最嚴格的規則：框架只拿 HTML，不載入圖片、樣式、字型、廣告框架。
+          // 一頁 Vinted 就有數百 KB 的圖片和樣式，省下來瀏覽器就不會被拖慢。
+          { header: 'content-security-policy', operation: 'set', value: "default-src 'none'" },
         ] },
         condition: { requestDomains: ['www.vinted.nl', 'www.ebay.de', 'www.vatera.hu'], resourceTypes: ['sub_frame'], initiatorDomains: [chrome.runtime.id] },
       }],
@@ -91,149 +94,44 @@ chrome.storage.onChanged.addListener(changes => {
 });
 
 chrome.alarms.onAlarm.addListener(a => {
-  if (a.name === 'check') checkWatches();
+  if (a.name === 'check') Promise.resolve(checkWatches()).catch(() => {}).finally(maybeCheckFavs);
 });
 
+// 收藏的商品是否已賣掉或下架：追蹤檢查完之後，順便查一下到期的收藏（每件約 10 小時查一次）
+async function maybeCheckFavs() {
+  try {
+    const { favAutoRemove = true, favCheckedAt = 0 } = await chrome.storage.local.get(['favAutoRemove', 'favCheckedAt']);
+    if (!favAutoRemove || Date.now() - favCheckedAt < 3600e3) return;
+    await checkFavorites({ limit: 40 });
+  } catch (e) { console.warn('favorites check', e); }
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type === 'testNotify') {
+    testNotify().then(sendResponse).catch(e => sendResponse({ error: String(e?.message || e) }));
+    return true;
+  }
   if (msg?.type === 'checkNow') {
     checkWatches().then(r => sendResponse(r)).catch(e => sendResponse({ found: 0, error: String(e?.message || e) }));
     return true;
   }
-  if (msg?.type === 'vintedViaTab') {
-    vintedViaTab(msg.url, msg.background).then(sendResponse).catch(e => sendResponse({ error: String(e?.message || e) }));
-    return true;
-  }
 });
 
-// ---------- Vinted 備援：在最小化的獨立視窗裡讀取 ----------
-// 用獨立視窗而不是在你的視窗開分頁，分頁列就不會閃。
-// 同一批讀取共用同一個視窗，全部讀完幾秒後才關閉。
-let vintedQueue = Promise.resolve();
-let workerWin = null;     // { windowId, tabId }
-let closeTimer = null;
-let pending = 0;
-
-function vintedViaTab(url, background) {
-  // 背景追蹤絕對不開視窗：你可能正在看影片或做別的事，視窗跳出來會打斷你
-  if (background) return i18nReady.then(() => ({ error: T`背景檢查暫時讀不到 Vinted，下次檢查會再試` }));
-  pending++;
-  clearTimeout(closeTimer);
-  const job = vintedQueue.then(async () => {
-    await i18nReady;
-    return readVinted(url);
-  });
-  vintedQueue = job.catch(() => {}).finally(() => {
-    pending--;
-    if (pending === 0) closeTimer = setTimeout(closeWorker, 5000);
-  });
-  return job;
-}
-
-async function closeWorker() {
-  if (pending > 0 || !workerWin) return;
-  const w = workerWin;
-  workerWin = null;
-  chrome.storage.session.remove('vintedWorker').catch(() => {});
-  await chrome.windows.remove(w.windowId).catch(() => {});
-}
-
-// 背景程式閒置太久會被 Chrome 暫停，計時器跟著失效，最小化視窗可能沒關掉。
-// 所以把視窗編號記在 session 儲存區，背景程式重新啟動時把留下的視窗關掉。
+// ---------- 舊版留下的最小化 Vinted 視窗 ----------
+// v1.3 以前讀不到 Vinted 時會開一個最小化視窗。v1.4 起不再這樣做；
+// 如果更新前還留著那個視窗，背景程式啟動時把它關掉。
 chrome.storage.session.get('vintedWorker').then(({ vintedWorker }) => {
-  if (vintedWorker?.windowId && !workerWin) {
+  if (vintedWorker?.windowId) {
     chrome.windows.remove(vintedWorker.windowId).catch(() => {});
     chrome.storage.session.remove('vintedWorker').catch(() => {});
   }
 }).catch(() => {});
 
-async function getWorkerTab(url) {
-  if (workerWin) {
-    try {
-      await chrome.tabs.update(workerWin.tabId, { url });
-      return workerWin.tabId;
-    } catch { workerWin = null; }
-  }
-  try {
-    const win = await chrome.windows.create({ url, state: 'minimized', focused: false });
-    workerWin = { windowId: win.id, tabId: win.tabs[0].id };
-    chrome.storage.session.set({ vintedWorker: workerWin }).catch(() => {});
-    return workerWin.tabId;
-  } catch {
-    // 少數情況無法建立最小化視窗：退回在背景開分頁
-    const tab = await chrome.tabs.create({ url, active: false });
-    workerWin = null;
-    return { fallbackTab: tab.id };
-  }
-}
-
-async function readVinted(url) {
-  let target;
-  try {
-    target = await getWorkerTab(url);
-    const tabId = typeof target === 'object' ? target.fallbackTab : target;
-    await waitForTabComplete(tabId, 25000);
-    // 頁面資料是分批送來的，等一下讓它載完
-    for (let i = 0; i < 6; i++) {
-      const [{ result }] = await chrome.scripting.executeScript({ target: { tabId }, func: extractVintedInPage });
-      if (result?.blocked) return { error: T`Vinted 要求人機驗證，請在 Chrome 打開 vinted.nl 完成驗證後再試` };
-      if (result?.items) return result;
-      await new Promise(r => setTimeout(r, 700));
-    }
-    return { error: T`頁面裡找不到商品資料` };
-  } catch (e) {
-    return { error: T`備援讀取失敗：${e?.message || e}` };
-  } finally {
-    if (typeof target === 'object') chrome.tabs.remove(target.fallbackTab).catch(() => {});
-  }
-}
-
-function waitForTabComplete(tabId, timeout) {
-  return new Promise((resolve, reject) => {
-    let started = false;
-    const timer = setTimeout(() => { chrome.tabs.onUpdated.removeListener(onUpd); reject(new Error(T`載入逾時`)); }, timeout);
-    function onUpd(id, info) {
-      if (id !== tabId) return;
-      if (info.status === 'loading') started = true;
-      if (info.status === 'complete' && started) {
-        clearTimeout(timer);
-        chrome.tabs.onUpdated.removeListener(onUpd);
-        resolve();
-      }
-    }
-    chrome.tabs.onUpdated.addListener(onUpd);
-    chrome.tabs.get(tabId).then(t => {
-      if (t.status === 'loading') started = true;
-      else if (t.status === 'complete' && t.url && !t.pendingUrl) { started = true; onUpd(tabId, { status: 'complete' }); }
-    }).catch(() => {});
-  });
-}
-
-// 這個函式會被注入到 Vinted 頁面裡執行，所以必須自給自足、不能用外部變數
-function extractVintedInPage() {
-  const html = document.documentElement.innerHTML;
-  if (/captcha-delivery|geo\.captcha|datadome/i.test(html) && !html.includes('__next_f')) return { blocked: true };
-  const re = /self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)/g;
-  let m, flight = '';
-  while ((m = re.exec(html))) { try { flight += JSON.parse(m[1]); } catch (e) {} }
-  const key = '"items":{"items":[';
-  const i = flight.indexOf(key);
-  if (i < 0) return null;
-  const start = i + key.length - 1;
-  let depth = 0, inStr = false, esc = false, j = start;
-  for (; j < flight.length; j++) {
-    const c = flight[j];
-    if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; }
-    if (c === '"') inStr = true;
-    else if (c === '[' || c === '{') depth++;
-    else if (c === ']' || c === '}') { depth--; if (depth === 0) break; }
-  }
-  try { return { items: JSON.parse(flight.slice(start, j + 1)) }; } catch (e) { return null; }
-}
-
 function watchLabel(w) {
   if (w.category) {
     const cat = CATEGORIES.find(c => c.key === w.category);
-    return T`分類：${cat ? tr(cat.name) : w.customCat?.name || w.category}`;
+    const name = cat ? tr(cat.name) : w.customCat?.name || w.category;
+    return w.catQuery ? T`分類：${name} · ${w.catQuery}` : T`分類：${name}`;
   }
   if (w.multi) return T`素人賣家字詞（全部）`;
   return w.query;
@@ -261,12 +159,13 @@ async function runCheck() {
     try {
       let res;
       // 自訂分類：把分類內容（關鍵字）一起傳過去
-      if (w.category) res = await browseAll(w.customCat ? { ...w.customCat, key: w.category, custom: true } : w.category, w.sources, { min: w.min, max: w.max });
+      if (w.category) res = await browseAll(w.customCat ? { ...w.customCat, key: w.category, custom: true } : w.category, w.sources, { min: w.min, max: w.max }, w.catQuery);
       else res = await searchMulti(w.multi || [{ query: w.query, sources: w.sources }], { min: w.min, max: w.max }, w.used);
       const { items, errors } = res;
       // 自訂分類的排除字詞可能事後改過，一起套用
       const exclude = [w.exclude, w.customCat?.exclude].filter(Boolean).join(', ');
-      const filtered = applyFilters(items, { ...w, exclude, strict: w.category ? false : w.strict });
+      // 分類追蹤：有指定關鍵字（在分類裡搜尋）時才檢查標題
+      const filtered = applyFilters(items, { ...w, query: w.category ? w.catQuery : w.query, exclude, strict: w.category ? !!w.catQuery && w.strict !== false : w.strict });
       // 素人字詞、分類追蹤的結果型號混雜，算行情沒有意義
       const flags = w.multi || w.category ? {} : computeDeals(filtered, dealThreshold).flags;
       const seen = new Set(w.seen || []);
@@ -302,7 +201,8 @@ async function runCheck() {
   await chrome.storage.local.set({ watches: latest, newItems: merged });
   await updateBadge(merged.filter(i => !i.viewed).length);
 
-  if (found.length) {
+  const { notifyOn = true, notifySticky = false } = await chrome.storage.local.get(['notifyOn', 'notifySticky']);
+  if (found.length && notifyOn) {
     // 低於行情的排前面
     found.sort((a, b) => (b.deal?.kind === 'deal') - (a.deal?.kind === 'deal'));
     const deals = found.filter(i => i.deal?.kind === 'deal');
@@ -318,9 +218,26 @@ async function runCheck() {
         ? `${tag(first)}${first.title}｜${first.priceLabel}｜${first.source}`
         : found.slice(0, 3).map(i => `${tag(i)}${i.title}（${i.priceLabel}）`).join('\n'),
       priority: deals.length ? 2 : 1,
+      requireInteraction: !!notifySticky,
     });
   }
   return { found: found.length };
+}
+
+// 測試通知：讓你確認 Mac 有沒有允許 Chrome 跳通知
+async function testNotify() {
+  await i18nReady;
+  const level = await chrome.notifications.getPermissionLevel();
+  if (level !== 'granted') return { level };
+  const { notifySticky = false } = await chrome.storage.local.get('notifySticky');
+  const id = await chrome.notifications.create('test-' + Date.now(), {
+    type: 'basic',
+    iconUrl: 'icon128.png',
+    title: T`測試通知：新上架`,
+    message: T`Leica M6｜€ 1.450｜Marktplaats\n有新商品時會像這樣通知你`,
+    requireInteraction: !!notifySticky,
+  });
+  return { level, id };
 }
 
 async function updateBadge(n) {
