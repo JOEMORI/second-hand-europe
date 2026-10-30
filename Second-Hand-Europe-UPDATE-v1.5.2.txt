@@ -1,0 +1,450 @@
+SECOND HAND EUROPE  v1.5.2  -  HOW TO UPDATE & WHAT'S NEW
+==========================================================
+Second Hand Europe (formerly Gear Search) searches second-hand
+marketplaces across Europe in one go.
+(中文說明在下面)
+
+Part 0: what changed from v1.5.1 to v1.5.2 (small clean-up).
+Part 1: what changed from v1.5 to v1.5.1 (a cleaner interface).
+Part 2: what changed from v1.4 to v1.5.
+Part 3: what changed from v1.3 to v1.4.
+Part 4: what changed from v1.2 to v1.3.
+Part 5: what v1.2 added since the first version (v1.0.0).
+Coming from an older version? Every part after yours applies.
+
+
+HOW TO UPDATE (2 minutes, keeps your saved items and watches)
+-------------------------------------------------------------
+Your saved items and watches belong to the folder Chrome loads the
+extension from. Keep using the SAME folder and nothing is lost.
+
+1. Find your existing extension folder (the one you picked with
+   "Load unpacked" last time, probably called "gear-search").
+2. Unzip the new second-hand-europe.zip somewhere temporary.
+3. Copy everything inside the new "second-hand-europe" folder into
+   your existing folder (keep its old name). Choose "Replace"
+   when asked.
+4. Go to  chrome://extensions  and click the round reload arrow on
+   the extension (now called Second Hand Europe).
+5. Open it again. chrome://extensions should show version 1.5.2.
+
+Do NOT click "Remove" and load a new folder: Chrome treats that as a
+new extension and your saved items and watches would be gone.
+From v1.2 on you can also use "Export backup" first (since v1.5.1 it
+is under Settings, the gear at the bottom of the sidebar),
+just in case.
+
+
+
+WHAT'S NEW IN v1.5.2 (compared with v1.5.1)
+-------------------------------------------
+- No more pop-up preview when you hover over a listing; the card
+  already shows the large photo and all the details.
+- Above the results, the marketplace buttons fold into one button
+  ("5 marketplaces · 128 listings") once loading is done. Click it to
+  filter by marketplace. Market price, bargains and load errors now
+  sit on the same line.
+- The 16 "more marketplaces" links fold into one button.
+- "Watch: ..." on cards is now small grey text.
+- Fix: Vinted conditions such as "Good" are now translated.
+
+
+WHAT v1.5.1 CHANGED (compared with v1.5)
+----------------------------------------
+In short: a tidier interface. The sidebar keeps only what you use all
+the time, help text moved behind small (i) icons, listing cards put
+the photo first, and the start page shows your new listings.
+
+- Settings: search settings (title must contain the keyword, hide
+  pickup-only, eBay used only, deal marking), exclude words, backup
+  and language moved into "Settings", the gear at the bottom of the
+  sidebar. The gear stays at the bottom while you scroll.
+- Help text: the long explanations on Browse categories, New listings,
+  Saved and Watches are now behind an (i) next to the title. Hover
+  over it (or tap it on a touch screen) to read.
+- Listing cards: 4:3 photos, 4 per row (5 on very wide screens, 3 on
+  narrow ones). The photo only shows the marketplace label (top left)
+  and the save star (top right). "Below market", naive wording, no
+  brand, unusually cheap and defect labels now sit next to the price.
+  Place, listing time and shipping are on one line.
+  Below-market listings no longer get an orange border; the label
+  next to the price is enough.
+- Start page: before you search, the search box is large and centred,
+  with your quick searches and the 8 latest new listings from your
+  watches underneath. "View all" opens New listings.
+  The search box starts empty instead of repeating your last search,
+  and it clears when you switch to another tab.
+- The region "Nearby" is now called "Western Europe".
+
+
+WHAT v1.5 CHANGED (compared with v1.4)
+--------------------------------------
+In short: "Browse categories" is now a catalog you pick from yourself,
+and notifications show one item each, with photo and price.
+
+- Category catalog: 40 categories in 8 groups (cameras & photo, audio &
+  headphones, instruments & DJ, furniture & home, clothing, bikes,
+  records & books, collectibles & finds). Each one uses the
+  marketplaces' own categories (Marktplaats, 2dehands, Vinted,
+  Kleinanzeigen, eBay); other countries are searched with a keyword in
+  their own language.
+- "My categories" are yours: add them with "Add from the catalog",
+  remove any with x (press twice), including the old built-in ones.
+  Removed ones can be added back at any time.
+- Search the catalog in English, Chinese, Dutch or German. The right
+  side shows how each ticked marketplace will be searched.
+- Tick "Also watch this category" when adding to get notifications for
+  it (off by default, because a whole category can be very busy).
+- Can't find it? Make a custom keyword category straight from the
+  search word.
+- After updating you keep your current categories and custom ones.
+- Notifications: one per new item, up to 3, plus one summary for the
+  rest. Title = price (with local price) and marketplace, text = item
+  name, small image = item photo. Clicking opens the listing; the
+  summary opens New listings. In Watches you can switch to "One
+  summary only" or "Only notify below market price" (keyword watches).
+- Fixes: eBay is no longer skipped when you search a brand inside
+  "Clothing"; a quick search keeps its category even if you removed it
+  from My categories.
+
+
+WHAT v1.4 CHANGED (compared with v1.3)
+--------------------------------------
+In short: much lighter on Chrome, search within a category, a bigger
+table-style list, sold saved items leave on their own, and system
+notifications even when the window is minimized.
+
+- Chrome freezing / window that wouldn't drag while Vinted was open:
+  * At most 2 Vinted pages are read at a time (about 3.5 MB each).
+    Before, it could load 6 at once.
+  * When Vinted's login session expires, it is refreshed only once
+    every 10 minutes. Before, several searches could refresh it at the
+    same time, which could make your own open Vinted tab keep reloading.
+  * The invisible frames load only the page text, no photos, styles or
+    ads, and read the listing data once.
+  * No more minimized Vinted window. It loaded the full Vinted website
+    and was the main suspect for the freezes. If Vinted can't be read,
+    open vinted.nl once in Chrome and search again.
+- Search within a category: pick a category next to the search box,
+  e.g. "Lenses" + Schneider, or the new "Clothing" category + ARYS.
+  You only get lenses (or clothes), not electrical goods. Works for
+  quick searches and watches too. In "Browse categories" you can also
+  type a brand or model after picking a category.
+- Browse categories: the category cards shrink to a row of buttons once
+  you pick one. Its price range is now separate from the search price.
+- List view is now a table (inspired by HiFi Shark): large photo,
+  title, marketplace, price and listing date. Click "Price" or "Listed"
+  to sort. "New listings" and "Saved" can switch between grid and list
+  too ("Saved" remembers its own choice and starts as a list).
+- Scroll to the bottom and more results load automatically.
+- Each region in the marketplace list has an "All" / "Clear" button.
+- System notifications (Watches tab): turn them on or off, keep them on
+  screen until dismissed, and send a test notification. They work while
+  the Chrome window is minimized or closed, as long as Chrome is still
+  running. On a Mac: System Settings > Notifications > Google Chrome >
+  Allow notifications, style "Alerts".
+- Saved items that were sold or taken down are removed automatically
+  (about every 10 hours, and when you open "Saved"). The site must say
+  the page is gone, or show it as sold twice at least 2 hours apart.
+  Removed items stay under "Recently removed automatically" for 30 days
+  with your notes; "Put back" restores one. You can switch this off.
+
+
+WHAT v1.3 CHANGED (compared with v1.2)
+--------------------------------------
+In short: one more country, and a big round of stability fixes.
+
+- New marketplace: Vatera (Hungary). Prices in forints are converted
+  to euros. Auctions show the number of bids. If Vatera shows "blocked",
+  open vatera.hu once in Chrome and search again.
+- Steadier: at most 6 marketplace requests and 2 invisible frames run
+  at once, and changing category or price stops the old search instead
+  of letting it keep loading in the background.
+- Watch checks no longer undo changes you make while a check is running
+  (deleted watches coming back, new ones vanishing). Pressing "Check now"
+  during a scheduled check no longer sends duplicate notifications.
+- Leftover minimized Vinted windows are now closed automatically.
+- eBay no longer shows 0 results when it sends a "please wait" page;
+  the extension reads it another way instead.
+- If a later page of a marketplace fails, the pages already loaded are
+  kept, and "Load more" retries the failed page.
+- Clicking the toolbar icon switches to the open extension tab without
+  reloading it. Clicking a notification opens "New listings".
+- Smaller fixes: "Load more" no longer disappears after a new search;
+  Marktplaats "Load more" stops when there are no more priced results;
+  listings seen long ago aren't announced as new again; the "Check now"
+  button can't get stuck; notifications follow the language you pick;
+  eBay auctions without bids say "Auction" instead of "0 bids".
+- Watches: if a marketplace failed when you created a watch, or you
+  changed a custom category's keywords, its first successful check now
+  just records what's there instead of flooding you with notifications.
+- A marketplace that doesn't respond gives up after 20 seconds instead
+  of showing "Loading" forever.
+- Vinted "no listing data" fixed: when Vinted's login session expires
+  it shows an empty "session refresh" page; the extension now refreshes
+  the session itself and reads again.
+- eBay: retries once when blocked, and its listing times ("16. Oct.
+  22:47") are read correctly, so "Newest first" is more accurate.
+- Kleinanzeigen: adapted to its new page layout (the price could be
+  taken from the description), and its times are read as German time,
+  so they're right even if your computer is set to another time zone.
+- One odd listing no longer makes a whole marketplace fail.
+- Importing a damaged backup can no longer break the extension.
+- The price filter works correctly after running a quick search or a
+  watch's search; clicking a notification again always opens
+  "New listings"; editing a custom category's exclude words also
+  applies to its watch; the toolbar wraps on narrow windows.
+
+
+WHAT v1.2 ADDED (compared with the first version, v1.0.0)
+---------------------------------------------------------
+More countries
+- 11 new marketplaces built in: DBA (Denmark), Blocket (Sweden),
+  Tori (Finland), willhaben (Austria), OLX (Poland, Portugal, Romania,
+  Bulgaria), Bazos (Czechia, Slovakia), Subito (Italy).
+- The marketplace list is grouped by region, with the country code in
+  front of every name. Vinted and eBay sit at the top; countries near
+  the Netherlands come next. Click a region to open or close it.
+- Prices in DKK, SEK, PLN, CZK and RON are converted to euros at the
+  European Central Bank rate, so price filters and bargain flags work
+  across countries. The local price is shown under the euro price.
+- More one-click links (new tab): Leboncoin, Wallapop, Milanuncios,
+  Allegro, Jofogas, Njuskalo, Bolha, DoneDeal, Tradera, Huuto.net,
+  CustoJusto, eBay FR/IT/ES/UK, Catawiki.
+
+Your own categories
+- "Browse categories" now has a "+ New category" card. Give it a
+  name and a few keywords in any language (e.g. "hasselblad, mamiya,
+  bronica"). Each keyword is searched on every ticked marketplace.
+- Edit or delete it with the pencil icon. You can watch it like any
+  other category.
+- Built-in categories also work on the new marketplaces: where a site
+  has no matching category, a keyword in its own language is used
+  (e.g. "microfono" on Subito, "mikrofon" on OLX.pl).
+- The "Bargain hunting" tab is now a category card called
+  "Attic finds". It searches each country's language for titles like
+  "old camera", "grandpa's" or "estate", sorts bargains first, and can
+  be watched like any category.
+
+More results, better prices
+- Loads several pages per marketplace, and "Load more" fetches the
+  next pages instead of stopping at page one.
+- Search results now send the price filter to the marketplaces too
+  (like categories already did), so every page is in your price range.
+- Shows the total price where shipping or buyer fees are known
+  (eBay, Vinted, Subito).
+- "Newest first" now sorts by real listing time across marketplaces.
+- "eBay: used only" switch.
+- "Hide pickup-only" switch for listings you can't get shipped.
+- Marktplaats / 2dehands listings marked "Bieden" (open to bids) are
+  no longer dropped when you set a price. The extension opens the
+  listing in the background and shows the seller's minimum bid or the
+  highest bid so far; items whose minimum is above your range are hidden.
+
+Easier to use
+- Grid or list view, and a toolbar that stays at the top while you
+  scroll.
+- Hover over a listing to see a larger photo.
+- Each time you open the extension the price range starts at "Any",
+  so an old price filter never hides results. Your last keyword and
+  exclude words are kept. Watches keep their own price range.
+- Failed marketplaces show as one short line; click "Show why".
+- English / Chinese switch at the bottom of the sidebar
+  ("語言 · Language").
+- Export / import a backup of saved items, watches, quick searches,
+  custom categories and settings.
+- New logo.
+
+Fixes
+- Vinted works again: when Vinted blocks a direct request, the
+  extension reads the page in an invisible frame, so no window pops up
+  when you change the price. Only if that also fails, and only while
+  you are using the search page yourself, does it use a minimized
+  window. Background watches never open a window.
+- Changing the price on the category page no longer jumps back to the
+  search results.
+- eBay titles no longer show "New listing" instead of the item name.
+- Category pages no longer show "below brand price" flags. Comparing
+  different models of the same brand wasn't meaningful. Categories
+  now only flag seller clues (no brand in the title, words like "old"
+  or "grandpa"). Keyword searches still flag prices well below that
+  search's median; set "Bargain flag" to Off to hide those too.
+- eBay no longer fails with "403": when eBay blocks a direct request,
+  the page is read in the same invisible frame.
+- The invisible frames only read the page's HTML and don't run the
+  site's own scripts, so they use far less memory and shouldn't slow
+  Chrome down.
+- Watch names follow the language you pick.
+
+Good to know
+- Converted prices are approximate; the seller's local price counts.
+- Some sites (Leboncoin, Wallapop, Allegro...) block automatic reading,
+  so they stay as links.
+
+
+=================================================
+中文說明
+=================================================
+
+歐洲二手搜尋 Second Hand Europe（原名 Gear Search 二手器材搜尋）：一次搜尋歐洲各國的二手平台。
+
+第零部分是 v1.5.2 跟 v1.5.1 的差別（小整理），第一部分是 v1.5.1 跟 v1.5 的差別（介面整理），第二部分是 v1.5 跟 v1.4 的差別，第三部分是 v1.4 跟 v1.3 的差別，第四部分是 v1.3 跟 v1.2 的差別，第五部分是 v1.2 跟第一版 v1.0.0 比多了什麼。
+從更舊的版本更新的話，你的版本之後的每一部分都適用。
+
+怎麼更新（約 2 分鐘，收藏和追蹤都會保留）
+------------------------------------------
+收藏和追蹤是跟著 Chrome 載入插件的資料夾走的，繼續用同一個資料夾就不會不見。
+
+1. 找到你原本的插件資料夾（上次「載入未封裝項目」選的那個，大概叫「gear-search」）。
+2. 把新的 second-hand-europe.zip 解壓縮到別的地方。
+3. 把新資料夾裡的所有檔案複製到原本的資料夾（舊資料夾名稱不用改），問你要不要取代時選「取代」。
+4. 打開 chrome://extensions，按插件（現在叫「歐洲二手搜尋」）上的圓形重新載入箭頭。
+5. 重新打開插件。chrome://extensions 上應該顯示 1.5.2 版。
+
+不要按「移除」再載入新資料夾：Chrome 會當成新的插件，收藏和追蹤就沒了。
+從 v1.2 開始，也可以先按「匯出備份」以防萬一（v1.5.1 起在側欄最底下齒輪的「設定」裡）。
+
+v1.5.2 跟 v1.5.1 差在哪（小整理）
+--------------------------------
+- 拿掉滑過商品卡片時跳出的放大預覽，卡片本身已經是大圖和完整資訊。
+- 搜尋結果上方：讀取完成後，各平台的按鈕收成一顆「5 個平台 · 128 件」，點開才能只看某個平台；行情、只看疑似便宜、讀取失敗都排在同一行。
+- 「其他平台」的 16 個連結收成一個按鈕。
+- 卡片上的「追蹤：…」改成灰色小字。
+- 修正：Vinted 的商品狀態（Good 等）現在會翻成中文。
+
+v1.5.1 跟 v1.5 差在哪（介面整理）
+--------------------------------
+一句話：介面變清爽。側欄只留常用的東西，說明文字收進 ⓘ，商品卡片以照片為主，打開就看得到追蹤的新上架。
+
+- 設定：搜尋設定（標題須含關鍵字、隱藏只能面交、eBay 只看二手、便宜標記）、排除字詞、備份、語言，收進側欄最底下齒輪的「設定」。捲動時設定鈕一直留在最底下。
+- 說明文字：分類瀏覽、新上架、收藏、追蹤清單的長說明，改成標題旁的 ⓘ，滑過才顯示（觸控螢幕點一下）。
+- 商品卡片：照片改成 4:3，每列 4 張（很寬的螢幕 5 張、較窄 3 張）。照片上只留平台標籤（左上）和收藏星號（右上）；「低於行情」、素人用語、未寫品牌、異常低價、故障 / 零件移到價格旁邊；地點、上架時間、可否寄送合成一行。「低於行情」的商品不再加橘色外框，只留價格旁的標籤。
+- 首頁：還沒搜尋時，搜尋框放大置中，下面是快捷搜尋和最近 8 件追蹤到的新上架，按「查看全部」到新上架。搜尋框一打開是空的，不會重複上次的關鍵字；切到其他分頁時也會清空。
+- 地區「鄰近國家」改名「西歐」。
+
+v1.5 跟 v1.4 差在哪
+------------------
+一句話：分類瀏覽改成自己挑的分類目錄，通知改成一件一則，帶照片和價格。
+
+- 分類目錄：8 大類共 40 個分類（相機與攝影、音響與耳機、樂器與 DJ、家具與居家、服飾、單車、唱片與書、收藏與撿漏）。
+  每個分類用各平台自己的分類（Marktplaats、2dehands、Vinted、Kleinanzeigen、eBay），其他國家用當地語言的關鍵字。
+- 「我的分類」由你決定：按「從分類目錄加入」挑，不要的按 × 兩次移除（原本內建的也可以刪），刪掉的隨時可以加回來。
+- 分類目錄可以用中文、英文、荷蘭文、德文搜尋，右邊會列出每個勾選的平台會怎麼找。
+- 加入時可以勾「也開始追蹤這個分類的新上架」（預設不勾，整個分類的新上架可能很多）。
+- 找不到想要的分類：可以直接用那個字建立關鍵字自訂分類。
+- 更新後原本的分類和自訂分類都會保留。
+- 通知：每件新商品一則，最多 3 則，其餘併成一則彙總。標題是價格（外幣附當地價格）和平台，內文是商品名稱，小圖是商品照片。
+  點單件通知打開商品頁，點彙總打開「新上架」。追蹤清單可以改成「只要一則彙總」或「只通知低於行情的」（關鍵字追蹤）。
+- 修正：在「服飾」裡搜尋品牌時不會再漏掉 eBay；快捷用的分類就算從我的分類移除，套用時仍會選著那個分類。
+
+v1.4 跟 v1.3 差在哪（簡短版）
+----------------------------
+一句話：對 Chrome 的負擔大幅減輕，可以在分類裡搜尋，列表變大、變成表格，
+賣掉的收藏會自己移除，視窗縮小也能收到系統通知。
+
+- 開著 Vinted 時 Chrome 卡住、視窗拖不動：
+  * 同時最多讀 2 頁 Vinted（每頁約 3.5 MB），以前最多同時讀 6 頁。
+  * Vinted 登入狀態過期時，10 分鐘內只更新一次。以前好幾個搜尋可能同時更新，
+    會讓你自己開著的 Vinted 分頁一直重新載入。
+  * 看不見的框架只載入文字，不載圖片、樣式和廣告，資料也只讀一次。
+  * 不再另外開最小化的 Vinted 視窗（它會完整載入 Vinted 網頁，是卡住的主要嫌疑）。
+    讀不到時，在 Chrome 打開 vinted.nl 一次再搜尋。
+- 在分類裡搜尋：搜尋框旁邊選分類，例如「鏡頭」＋ Schneider、新的「服飾」分類＋ ARYS，
+  只會出現鏡頭（或衣服），不會混進電器。快捷和追蹤也能用。
+  分類瀏覽選了分類後，也可以輸入品牌或型號。
+- 分類瀏覽：選了分類後，分類卡片縮成一排小按鈕。分類的價格和搜尋結果的價格分開設定。
+- 列表改成表格（參考 HiFi Shark）：大圖、標題、平台、價格、上架時間各一欄，
+  點「價格」「上架時間」可以排序。新上架、收藏也能切換格狀 / 列表
+  （收藏有自己的設定，預設列表）。
+- 往下捲到底會自動載入更多。
+- 平台清單每個地區可以一鍵「全選」或「清除」。
+- 系統通知（追蹤清單分頁）：可以開關、設成停留到按掉，也能傳一則測試通知。
+  Chrome 視窗縮小或關掉（但沒有完全結束 Chrome）也會通知。
+  Mac 要到「系統設定 → 通知 → Google Chrome」允許通知，樣式選「提示」。
+- 已賣掉或下架的收藏會自動移除（大約每 10 小時、打開「收藏」時檢查）。
+  網站說頁面不存在，或隔 2 小時以上連續兩次顯示已售出才會移除。
+  移除的商品在「最近自動移除」保留 30 天，備註也在，按「放回收藏」可以復原。
+  不想要可以關掉。
+
+
+v1.3 跟 v1.2 差在哪
+------------------
+一句話：多了匈牙利 Vatera，並修了一大輪穩定性問題。
+
+- 新平台：匈牙利 Vatera。福林價格會換算成歐元，拍賣會標出價次數。
+  如果顯示「Vatera 擋住了讀取」，在 Chrome 打開 vatera.hu 一次再搜尋。
+- 更穩：同時最多 6 個平台請求、2 個看不見的框架；換分類或價格時，舊的搜尋會停下來，不會在背景繼續讀。
+- 追蹤檢查進行中你新增、暫停或刪除追蹤，不會再被檢查結果蓋掉；檢查中再按「立即檢查」不會重複通知。
+- 沒關掉的最小化 Vinted 視窗現在會自動關閉。
+- eBay 回「請稍候」頁面時不會再顯示 0 件，會改用其他方式讀取。
+- 某個平台後面的頁面讀取失敗時，前面已讀到的會保留，「載入更多」會重試失敗的那頁。
+- 點工具列圖示會切換到已開著的插件分頁，不會重新載入；點通知會打開「新上架」。
+- 其他小修正：新搜尋後「載入更多」不會不見；設了價格時 Marktplaats 的「載入更多」會正確停止；
+  很久以前看過的商品不會再被當成新上架通知；「立即檢查」按鈕不會卡住；
+  通知會跟著你選的語言；eBay 沒人出價的拍賣顯示「拍賣」而不是「0 次出價」。
+- 追蹤：建立追蹤時讀取失敗的平台，或自訂分類改了關鍵字，第一次讀到時只記錄現有商品，不會一次跳出一大堆通知。
+- 網站沒有回應時 20 秒後放棄，不會一直顯示「讀取中」。
+- Vinted「頁面裡找不到商品資料」修好了：Vinted 登入狀態過期時會先出現空白的「session refresh」頁，現在插件會自己更新登入狀態再讀一次。
+- eBay：被擋時會先再試一次；上架時間（例如「16. Oct. 22:47」）會正確讀取，「最新優先」更準。
+- Kleinanzeigen：配合它的新版網頁（之前價格可能誤抓描述裡的數字），時間一律以德國時間換算，電腦設成別的時區也不會算錯。
+- 某一筆資料格式怪怪的，不會再讓整個平台讀取失敗。
+- 匯入壞掉的備份檔不會再讓插件打不開。
+- 用快捷或追蹤清單的「搜尋」之後改價格會正確生效；再點一次通知也會打開「新上架」；
+  自訂分類改排除字詞會套用到它的追蹤；視窗很窄時工具列會自動換行。
+
+v1.2 多了什麼（跟第一版 v1.0.0 比）
+----------------------------------
+更多國家
+- 新增 11 個平台：丹麥 DBA、瑞典 Blocket、芬蘭 Tori、奧地利 willhaben、
+  波蘭／葡萄牙／羅馬尼亞／保加利亞 OLX、捷克／斯洛伐克 Bazos、義大利 Subito。
+- 平台清單依地區分組，每個平台前面標國家代號。Vinted、eBay 在最上面，
+  接著是荷蘭附近的國家。點地區名稱可以展開或收合。
+- 丹麥克朗、瑞典克朗、波蘭幣、捷克克朗、羅馬尼亞列伊依歐洲央行匯率換成歐元，
+  價格篩選和撿漏標示可以跨國比較；歐元價格下面會顯示當地原價。
+- 更多「開新分頁」連結：Leboncoin、Wallapop、Milanuncios、Allegro、Jofogas、
+  Njuskalo、Bolha、DoneDeal、Tradera、Huuto.net、CustoJusto、eBay 法義西英、Catawiki。
+
+自訂分類
+- 分類瀏覽多了「＋ 新增分類」。取名字、填幾個關鍵字（任何語言都可以，
+  例如 hasselblad, mamiya, bronica），每個關鍵字會在勾選的平台上搜尋。
+- 用鉛筆圖示編輯或刪除，也可以加入追蹤。
+- 內建分類在新平台也能用：沒有對應分類的網站會用當地語言的關鍵字
+  （例如 Subito 用 microfono、OLX.pl 用 mikrofon）。
+- 原本的「撿漏」分頁改成分類卡片「素人賣家」：用各國語言搜尋老相機、
+  爺爺的、遺物這類標題，預設撿漏優先排序，也可以加入追蹤。
+
+結果更多、價格更準
+- 每個平台一次抓好幾頁，「載入更多」會繼續往下抓，不再只有第一頁。
+- 搜尋結果的價格篩選也直接交給平台（分類原本就是），每一頁都在價格範圍內。
+- 有運費或買家手續費資料時顯示總價（eBay、Vinted、Subito）。
+- 「最新優先」依真正的上架時間跨平台排序。
+- 「eBay 只看二手」開關。
+- 「隱藏只能面交」開關。
+- Marktplaats／2dehands 標「Bieden」（出價）的商品，設了價格也不會被濾掉。
+  插件會在背景讀商品頁，顯示賣家的最低出價或目前最高出價；最低出價超過價格範圍的才隱藏。
+
+更好用
+- 格狀或列表檢視，捲動時工具列固定在上方。
+- 滑過商品可以看大圖。
+- 每次打開插件，價格都從「不限」開始，不會被上次的價格範圍限制住；
+  上次的關鍵字和排除字詞會保留，追蹤項目照舊用各自的價格。
+- 讀取失敗的平台只顯示一行，點「看原因」才展開。
+- 側欄最下面可以切換中英文（語言 · Language）。
+- 匯出／匯入備份（收藏、追蹤、快捷、自訂分類、設定）。
+- 新 Logo。
+
+修正
+- Vinted 恢復正常：被擋時改在看不見的框架裡讀取，切換價格不會再跳出視窗。
+  只有這個方法也失敗、而且是你自己在搜尋頁操作時，才用最小化視窗；背景追蹤絕對不會開視窗。
+- 在分類頁改價格不會再跳回搜尋結果。
+- eBay 標題不會再顯示成「Neues Angebot」。
+- 分類頁不再顯示「低於某品牌行情」：同品牌不同型號混在一起比價沒有意義。
+  分類頁現在只標素人線索（標題沒寫品牌、有 old、opa 這類字）。
+  關鍵字搜尋仍會標出比這次結果中位數便宜很多的商品；不想看到可以把「便宜標記」設成關閉。
+- eBay 不會再顯示「回應 403」：直接讀取被擋時，改在看不見的框架裡讀取。
+- 看不見的框架只讀網頁 HTML、不執行網站自己的程式，佔用的記憶體少很多，不會再拖慢 Chrome。
+- 追蹤名稱會跟著切換的語言顯示。
+
+提醒
+- 換算的歐元價格是約略值，以賣家的當地價格為準。
+- 有些網站（Leboncoin、Wallapop、Allegro…）會擋自動讀取，所以只提供連結。
