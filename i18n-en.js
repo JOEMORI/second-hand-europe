@@ -370,4 +370,8 @@ export const EN = {
   '追蹤的項目還沒有新上架': 'Nothing new from your watches yet',
   '有新上架時會出現在這裡。': 'New listings will show up here.',
   '搜尋後按「加入追蹤」，之後新上架的商品會出現在這裡。': 'Search, then click "Watch". New listings will show up here.',
+  // ---- v1.5.2 ----
+  '在其他 {0} 個平台搜尋（開新分頁）': 'Search {0} more marketplaces (new tab)',
+  '{0} 個平台 · {1} 件': '{0} marketplaces · {1} listings',
+  '依平台篩選': 'Filter by marketplace',
 };

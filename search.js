@@ -3,7 +3,7 @@ setTimeout(() => document.documentElement.classList.remove('i18n-pending'), 1500
 import {
   searchAll, searchMulti, browseAll, applyFilters, computeDeals, computeBrowseFlags, sortNewest, cmpPrice, fmt,
   LINK_SITES, SOURCES, DEFAULT_SOURCES, CATEGORIES, CATALOG, catGroup, STARTER_CATS, LEGACY_CATS,
-  REGIONS, regionOf, countryRank, countryName, catSources, taskSource, catHow, parseWords, checkBids,
+  REGIONS, regionOf, countryRank, countryName, catSources, taskSource, catHow, parseWords, checkBids, vintedCond,
 } from './sources.js';
 import { T, tr, i18nReady, translateDom, locale, getLang, relTime } from './i18n.js';
 import { checkFavorites, restoreFavorite } from './favcheck.js';
@@ -66,7 +66,6 @@ function flash(node, msg) {
 
 // ---------- 分頁 ----------
 function showTab(name) {
-  if (typeof hidePreview === 'function') hidePreview();
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   ['results', 'browse', 'new', 'favs', 'watches'].forEach(t => { $('tab-' + t).hidden = t !== name; });
   // 分類瀏覽有自己的價格列，側欄的價格只用在搜尋結果
@@ -309,10 +308,23 @@ function renderLinks(q) {
   const box = $('links');
   box.replaceChildren();
   if (!q) return;
-  box.append(el('span', {}, T`其他平台（開新分頁）：`));
+  // 預設收起，點一下才列出連結（記住上次的選擇）
+  let open = false;
+  try { open = localStorage.getItem('linksOpen') === '1'; } catch {}
+  const list = el('span', { class: 'links-list', hidden: !open });
   for (const s of [...LINK_SITES].sort((a, b) => countryRank(a.cc) - countryRank(b.cc))) {
-    box.append(el('a', { href: s.url(q), target: '_blank', rel: 'noopener', title: countryName(s.cc) }, ccBadge(s.cc), s.name, icon('ext', 'ico tiny')));
+    list.append(el('a', { href: s.url(q), target: '_blank', rel: 'noopener', title: countryName(s.cc) }, ccBadge(s.cc), s.name, icon('ext', 'ico tiny')));
   }
+  const btn = el('button', {
+    type: 'button', class: 'links-toggle', 'aria-expanded': open ? 'true' : 'false',
+    onclick: () => {
+      const now = list.hidden;
+      list.hidden = !now;
+      btn.setAttribute('aria-expanded', now ? 'true' : 'false');
+      try { localStorage.setItem('linksOpen', now ? '1' : ''); } catch {}
+    },
+  }, T`在其他 ${LINK_SITES.length} 個平台搜尋（開新分頁）`, el('span', { class: 'caret-d' }));
+  box.append(btn, list);
 }
 
 function statusChips(progress, items, onlySource, onPick) {
@@ -337,6 +349,25 @@ function statusChips(progress, items, onlySource, onPick) {
   });
 }
 
+// 讀取完成後，各平台的按鈕收成一顆摘要；點開才列出（用來只看某個平台）。
+// 只看某個平台時，那個平台的按鈕留在摘要旁邊，方便取消。
+let chipsOpen = false;
+try { chipsOpen = localStorage.getItem('chipsOpen') === '1'; } catch {}
+function statusBar(progress, items, onlySource, onPick, rerender) {
+  const chips = statusChips(progress, items, onlySource, onPick);
+  const n = Object.keys(progress).length;
+  const loading = Object.values(progress).some(p => p.status === 'loading');
+  if (loading || n <= 1) return chips;
+  const setOpen = v => { chipsOpen = v; try { localStorage.setItem('chipsOpen', v ? '1' : ''); } catch {} rerender(); };
+  if (chipsOpen) return [...chips, el('button', { type: 'button', class: 'chip chip-fold', onclick: () => setOpen(false) }, T`收起`)];
+  const active = chips.find(c => c.classList.contains('active'));
+  return [
+    el('button', { type: 'button', class: 'chip chip-sum', title: T`依平台篩選`, 'aria-expanded': 'false', onclick: () => setOpen(true) },
+      T`${n} 個平台 · ${items.length} 件`, el('span', { class: 'caret-d' })),
+    active,
+  ].filter(Boolean);
+}
+
 // 失敗的平台：只顯示一行摘要，點一下才展開原因
 function renderErrors(progress, box) {
   const errs = Object.entries(progress).filter(([, p]) => p.status === 'error');
@@ -355,7 +386,7 @@ function renderErrors(progress, box) {
 }
 
 function renderStatus() {
-  $('status').replaceChildren(...statusChips(state.progress, state.items, state.onlySource, name => { state.onlySource = name; renderResults(); }));
+  $('status').replaceChildren(...statusBar(state.progress, state.items, state.onlySource, name => { state.onlySource = name; renderResults(); }, renderStatus));
   const extra = $('statusExtra');
   extra.replaceChildren();
 
@@ -439,7 +470,7 @@ function card(it, opts = {}) {
   else if (flag?.kind === 'odd') badge = el('span', { class: 'badge-muted', title: T`比行情便宜太多，多半是配件或說明書` }, T`異常低價`);
   else if (flag?.kind === 'parts') badge = el('span', { class: 'badge-muted', title: T`標題提到故障或零件` }, T`故障 / 零件`);
 
-  const meta = [it.location, it.dateLabel].filter(Boolean).join(' · ');
+  const meta = [it.source === 'Vinted' ? vintedCond(it.location) : it.location, it.dateLabel].filter(Boolean).join(' · ');
   const node = el('a', { class: 'card' + (flag?.kind === 'deal' ? ' is-deal' : ''), href: it.url, target: '_blank', rel: 'noopener' },
     el('div', { class: 'img' },
       it.image ? el('img', { src: it.image, loading: 'lazy', alt: '', referrerpolicy: 'no-referrer' }) : null,
@@ -575,64 +606,6 @@ for (const id of ['more', 'bMore']) {
   new MutationObserver(() => {
     if (!$(id).hidden) { autoMore.unobserve($(id).parentElement); autoMore.observe($(id).parentElement); }
   }).observe($(id), { attributes: true, attributeFilter: ['hidden'] });
-}
-
-// ---------- 滑過預覽 ----------
-const preview = $('preview');
-let pvTimer = null, pvCard = null;
-
-function showPreview(cardEl) {
-  const data = cardData.get(cardEl);
-  if (!data) return;
-  const { it, badge } = data;
-  const meta = [it.location, it.dateLabel].filter(Boolean).join(' · ');
-  preview.replaceChildren(
-    el('div', { class: 'pv-img' },
-      it.imageLarge || it.image ? el('img', { src: it.imageLarge || it.image, alt: '', referrerpolicy: 'no-referrer' }) : null,
-      badge ? badge.cloneNode(true) : null,
-    ),
-    el('div', { class: 'pv-body' },
-      el('div', { class: 'pv-head' },
-        el('span', { class: 'src-inline', style: `--c:${colorOf(it.source)}` }, it.source),
-        meta ? el('span', { class: 'meta' }, meta) : null,
-      ),
-      el('div', { class: 'pv-title' }, it.title),
-      el('div', { class: 'pv-price' }, it.priceLabel,
-        it.total != null ? el('span', { class: 'total inline', title: it.totalNote || '' }, T`總價約 € ${fmt(it.total)}`) : null,
-        it.localLabel ? el('span', { class: 'total inline' }, T`當地價格 ${it.localLabel}`) : null),
-      it.extra ? el('div', { class: 'meta extra' + (it.shipping === 'no' ? ' pickup' : '') }, it.extra) : null,
-    ),
-  );
-  preview.hidden = false;
-  const r = cardEl.getBoundingClientRect();
-  const w = preview.offsetWidth, h = preview.offsetHeight, gap = 12;
-  let left = r.right + gap;
-  if (left + w > window.innerWidth - 8) left = r.left - w - gap;
-  if (left < 8) left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left));
-  let top = r.top + r.height / 2 - h / 2;
-  top = Math.max(8, Math.min(window.innerHeight - h - 8, top));
-  preview.style.left = left + 'px';
-  preview.style.top = top + 'px';
-}
-
-function hidePreview() {
-  clearTimeout(pvTimer);
-  pvCard = null;
-  preview.hidden = true;
-}
-
-// 只在有滑鼠的裝置啟用
-if (window.matchMedia('(hover: hover)').matches) {
-  document.addEventListener('mouseover', e => {
-    const c = e.target.closest?.('.card:not(.skeleton)');
-    if (c === pvCard) return;
-    hidePreview();
-    if (!c || !cardData.has(c)) return;
-    pvCard = c;
-    pvTimer = setTimeout(() => { if (pvCard === c) showPreview(c); }, 450);
-  });
-  document.addEventListener('scroll', hidePreview, { passive: true });
-  window.addEventListener('blur', hidePreview);
 }
 
 // ---------- 收藏 ----------
@@ -1202,7 +1175,7 @@ function browseItems() {
 
 function renderBrowseStatus() {
   const items = browseFiltered();
-  $('bStatus').replaceChildren(...statusChips(bState.progress, items, bState.onlySource, name => { bState.onlySource = name; renderBrowse(); }));
+  $('bStatus').replaceChildren(...statusBar(bState.progress, items, bState.onlySource, name => { bState.onlySource = name; renderBrowse(); }, renderBrowseStatus));
   // 撿漏篩選
   const extra = $('bStatusExtra');
   extra.replaceChildren();

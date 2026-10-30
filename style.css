@@ -279,7 +279,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .card .title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; font-size: 13.5px; margin-bottom: 4px; }
 .meta { color: var(--muted); font-size: 12px; line-height: 1.45; }
 .meta.extra { color: var(--faint); }
-.meta.q { color: var(--accent-ink); margin-top: 2px; }
+.meta.q { color: var(--faint); font-size: 11.5px; margin-top: 2px; }
 
 .badge-deal, .badge-muted {
   font-size: 10.5px; font-weight: 700; line-height: 17px;
@@ -419,8 +419,6 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 }
 .badge-naive { background: #fff7d6; color: #8a5a00; }
 .badge-soft { background: var(--sunken); color: var(--muted); font-weight: 600; }
-.pv-img > .badge-deal, .pv-img > .badge-muted, .pv-img > .badge-naive, .pv-img > .badge-soft { line-height: 20px; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
-.pv-img > .badge-soft { background: rgba(255,255,255,.92); color: #55524c; }
 .chip.flag-toggle { --c: var(--accent); }
 .chip.flag-toggle b { color: var(--accent); }
 .chip.flag-toggle.clue { --c: #c08a00; }
@@ -550,27 +548,13 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 }
 
 /* ============================================================
-   滑過預覽
+   動畫（設定面板用）
    ============================================================ */
-.preview {
-  position: fixed; z-index: 50; width: 380px; pointer-events: none;
-  background: var(--panel); border-radius: 14px; overflow: hidden;
-  box-shadow: 0 0 0 1px var(--line), 0 12px 40px rgba(20, 15, 5, .22);
-  animation: pv-in .14s ease-out;
-}
 @keyframes pv-in { from { opacity: 0; transform: translateY(4px) scale(.985); } to { opacity: 1; transform: none; } }
-.pv-img { position: relative; aspect-ratio: 4 / 3; background: var(--sunken); }
-.pv-img img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.pv-img > span { position: absolute; left: 10px; bottom: 10px; }
-.pv-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; }
-.pv-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.pv-title { font-size: 15px; font-weight: 600; line-height: 1.4; }
-.pv-price { font-size: 19px; font-weight: 750; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 900px) {
   .toolbar.sticky { margin: -18px -16px 14px; padding: 10px 16px; }
   .tb-row { flex-wrap: wrap; }
-  .preview { display: none; }
 }
 
 /* 語言切換：固定在側欄最底下，標題中英並列 */
@@ -782,3 +766,25 @@ body.is-home #quickList { justify-content: center; }
   .ibtn.wide .tip { width: min(420px, 86vw); }
   body.is-home .mainhead { padding: 24px 16px 8px; }
 }
+
+/* ============================================================
+   v1.5.2：其他平台連結收起、狀態列收成一行
+   ============================================================ */
+.caret-d { display: inline-block; width: 0; height: 0; margin-left: 2px; border-top: 4.5px solid currentColor; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; transition: transform .15s; }
+[aria-expanded="true"] > .caret-d { transform: rotate(180deg); }
+.links { align-items: center; }
+.links-toggle { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 2px 0; font: inherit; font-size: 12.5px; color: var(--muted); cursor: pointer; }
+.links-toggle:hover { color: var(--accent); }
+.links-list { display: contents; }
+.chip-sum { color: var(--text); font-weight: 600; }
+.chip-sum:hover { border-color: var(--line-strong); }
+.chip-fold { color: var(--muted); }
+/* 工具列：摘要、行情、錯誤和右邊的工具排成一行，放不下才換行 */
+.toolbar.sticky { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.toolbar.sticky > .tb-row { display: contents; }
+.toolbar.sticky .status { order: 1; min-height: 30px; }
+.toolbar.sticky .tb-extra { order: 2; margin-top: 0; }
+.toolbar.sticky .tb-err { order: 3; margin-top: 0; }
+.toolbar.sticky .tb-err[data-open="1"] { flex-basis: 100%; order: 5; }
+.toolbar.sticky .tools { order: 4; margin-left: auto; }
+.toolbar.sticky .market.first { border-left: 1px solid var(--line); padding-left: 12px; }

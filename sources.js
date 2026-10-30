@@ -596,7 +596,13 @@ export function extractVintedItems(html) {
   try { return JSON.parse(flight.slice(start, j + 1)); } catch { return null; }
 }
 
-const VINTED_COND = { 'Nieuw met prijskaartje': '全新附吊牌', 'Nieuw zonder prijskaartje': '全新無吊牌', 'Heel goed': '很好', 'Goed': '良好', 'Redelijk': '尚可' };
+// Vinted 依帳號語言回傳荷蘭文或英文的商品狀態，兩種都對應
+const VINTED_COND = {
+  'Nieuw met prijskaartje': '全新附吊牌', 'Nieuw zonder prijskaartje': '全新無吊牌', 'Heel goed': '很好', 'Goed': '良好', 'Redelijk': '尚可',
+  'New with tags': '全新附吊牌', 'New without tags': '全新無吊牌', 'Very good': '很好', 'Good': '良好', 'Satisfactory': '尚可',
+};
+// 已經存起來的新上架、收藏也用這個翻譯（舊資料裡可能是英文）
+export const vintedCond = c => (VINTED_COND[c] ? tr(VINTED_COND[c]) : c);
 
 export function parseVinted(list) {
   return mapSafe((list || [])
@@ -621,7 +627,7 @@ export function parseVinted(list) {
         url: absUrl(it.url, 'https://www.vinted.nl') || `https://www.vinted.nl/items/${it.id}`,
         image: it.thumbnailUrl || it.photos?.[0]?.url || null,
         imageLarge: it.photos?.[0]?.url || it.thumbnailUrl || null,
-        location: VINTED_COND[cond] ? tr(VINTED_COND[cond]) : cond,
+        location: vintedCond(cond),
         dateLabel: it.isPromoted ? T`推廣` : '',
         ts: null,
         vintedId: Number(it.id),
