@@ -1,9 +1,10 @@
-SECOND HAND EUROPE  v1.5.3  -  HOW TO UPDATE & WHAT'S NEW
+SECOND HAND EUROPE  v1.5.4  -  HOW TO UPDATE & WHAT'S NEW
 ==========================================================
 Second Hand Europe (formerly Gear Search) searches second-hand
 marketplaces across Europe in one go.
 (中文說明在下面)
 
+New in v1.5.4: price-drop alerts, merged duplicate listings, price history.
 Part 0: what changed from v1.5.1 to v1.5.3 (small clean-up).
 Part 1: what changed from v1.5 to v1.5.1 (a cleaner interface).
 Part 2: what changed from v1.4 to v1.5.
@@ -26,7 +27,7 @@ extension from. Keep using the SAME folder and nothing is lost.
    when asked.
 4. Go to  chrome://extensions  and click the round reload arrow on
    the extension (now called Second Hand Europe).
-5. Open it again. chrome://extensions should show version 1.5.3.
+5. Open it again. chrome://extensions should show version 1.5.4.
 
 Do NOT click "Remove" and load a new folder: Chrome treats that as a
 new extension and your saved items and watches would be gone.
@@ -36,8 +37,25 @@ just in case.
 
 
 
-WHAT'S NEW IN v1.5.3 (compared with v1.5.1)
--------------------------------------------
+WHAT'S NEW IN v1.5.4
+--------------------
+- Price-drop alerts for saved items: when saved listings are checked,
+  the price on the listing page is read too. If it dropped, you get a
+  notification (old price -> new price) and the card shows the old
+  price crossed out with "x% off". Works for Marktplaats, 2dehands,
+  willhaben, Kleinanzeigen and other sites with standard price data;
+  euro prices only, no auctions.
+- Duplicate listings merged: the same item listed on two sites (for
+  example Marktplaats and 2dehands) with the same title and price is
+  shown as one card, labelled with both sites.
+- Personal price history: each time you search the same keyword, the
+  prices you see are saved (180 days). With 20 or more, "below market"
+  uses this long-term median ("N listings over time"). Searches with a
+  price range are not recorded. You can clear it under Settings.
+
+
+WHAT v1.5.3 CHANGED (compared with v1.5.1)
+------------------------------------------
 - No more pop-up preview when you hover over a listing; the card
   already shows the large photo and all the details.
 - "Watch: ..." on cards is now small grey text.
@@ -283,7 +301,7 @@ Good to know
 
 歐洲二手搜尋 Second Hand Europe（原名 Gear Search 二手器材搜尋）：一次搜尋歐洲各國的二手平台。
 
-第零部分是 v1.5.3 跟 v1.5.1 的差別（小整理），第一部分是 v1.5.1 跟 v1.5 的差別（介面整理），第二部分是 v1.5 跟 v1.4 的差別，第三部分是 v1.4 跟 v1.3 的差別，第四部分是 v1.3 跟 v1.2 的差別，第五部分是 v1.2 跟第一版 v1.0.0 比多了什麼。
+最前面是 v1.5.4 的新功能（收藏降價通知、合併重複刊登、個人行情紀錄），第零部分是 v1.5.3 跟 v1.5.1 的差別（小整理），第一部分是 v1.5.1 跟 v1.5 的差別（介面整理），第二部分是 v1.5 跟 v1.4 的差別，第三部分是 v1.4 跟 v1.3 的差別，第四部分是 v1.3 跟 v1.2 的差別，第五部分是 v1.2 跟第一版 v1.0.0 比多了什麼。
 從更舊的版本更新的話，你的版本之後的每一部分都適用。
 
 怎麼更新（約 2 分鐘，收藏和追蹤都會保留）
@@ -294,10 +312,16 @@ Good to know
 2. 把新的 second-hand-europe.zip 解壓縮到別的地方。
 3. 把新資料夾裡的所有檔案複製到原本的資料夾（舊資料夾名稱不用改），問你要不要取代時選「取代」。
 4. 打開 chrome://extensions，按插件（現在叫「歐洲二手搜尋」）上的圓形重新載入箭頭。
-5. 重新打開插件。chrome://extensions 上應該顯示 1.5.3 版。
+5. 重新打開插件。chrome://extensions 上應該顯示 1.5.4 版。
 
 不要按「移除」再載入新資料夾：Chrome 會當成新的插件，收藏和追蹤就沒了。
 從 v1.2 開始，也可以先按「匯出備份」以防萬一（v1.5.1 起在側欄最底下齒輪的「設定」裡）。
+
+v1.5.4 新功能
+------------
+- 收藏降價通知：定時檢查收藏時順便讀商品頁上的價格，降價了跳出通知（原價 → 新價），卡片上劃掉原價、標「降價 x%」。適用 Marktplaats、2dehands、willhaben、Kleinanzeigen 等提供標準價格資料的網站；只看歐元標價，不含拍賣。
+- 合併重複刊登：同一件商品刊在兩個平台（例如 Marktplaats 和 2dehands），標題和價格相同的合成一張卡片，標籤列出兩個平台。
+- 個人行情紀錄：每次搜尋同一個關鍵字，記下看到的價格（保留 180 天）。累積 20 件以上後，「低於行情」改用長期行情判斷（行情旁顯示「累積 N 件」）。設了價格範圍的搜尋不記錄；設定裡可以清除。
 
 v1.5.3 跟 v1.5.1 差在哪（小整理）
 --------------------------------
