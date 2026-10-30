@@ -766,25 +766,3 @@ body.is-home #quickList { justify-content: center; }
   .ibtn.wide .tip { width: min(420px, 86vw); }
   body.is-home .mainhead { padding: 24px 16px 8px; }
 }
-
-/* ============================================================
-   v1.5.2：其他平台連結收起、狀態列收成一行
-   ============================================================ */
-.caret-d { display: inline-block; width: 0; height: 0; margin-left: 2px; border-top: 4.5px solid currentColor; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; transition: transform .15s; }
-[aria-expanded="true"] > .caret-d { transform: rotate(180deg); }
-.links { align-items: center; }
-.links-toggle { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 2px 0; font: inherit; font-size: 12.5px; color: var(--muted); cursor: pointer; }
-.links-toggle:hover { color: var(--accent); }
-.links-list { display: contents; }
-.chip-sum { color: var(--text); font-weight: 600; }
-.chip-sum:hover { border-color: var(--line-strong); }
-.chip-fold { color: var(--muted); }
-/* 工具列：摘要、行情、錯誤和右邊的工具排成一行，放不下才換行 */
-.toolbar.sticky { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.toolbar.sticky > .tb-row { display: contents; }
-.toolbar.sticky .status { order: 1; min-height: 30px; }
-.toolbar.sticky .tb-extra { order: 2; margin-top: 0; }
-.toolbar.sticky .tb-err { order: 3; margin-top: 0; }
-.toolbar.sticky .tb-err[data-open="1"] { flex-basis: 100%; order: 5; }
-.toolbar.sticky .tools { order: 4; margin-left: auto; }
-.toolbar.sticky .market.first { border-left: 1px solid var(--line); padding-left: 12px; }

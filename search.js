@@ -308,23 +308,10 @@ function renderLinks(q) {
   const box = $('links');
   box.replaceChildren();
   if (!q) return;
-  // 預設收起，點一下才列出連結（記住上次的選擇）
-  let open = false;
-  try { open = localStorage.getItem('linksOpen') === '1'; } catch {}
-  const list = el('span', { class: 'links-list', hidden: !open });
+  box.append(el('span', {}, T`其他平台（開新分頁）：`));
   for (const s of [...LINK_SITES].sort((a, b) => countryRank(a.cc) - countryRank(b.cc))) {
-    list.append(el('a', { href: s.url(q), target: '_blank', rel: 'noopener', title: countryName(s.cc) }, ccBadge(s.cc), s.name, icon('ext', 'ico tiny')));
+    box.append(el('a', { href: s.url(q), target: '_blank', rel: 'noopener', title: countryName(s.cc) }, ccBadge(s.cc), s.name, icon('ext', 'ico tiny')));
   }
-  const btn = el('button', {
-    type: 'button', class: 'links-toggle', 'aria-expanded': open ? 'true' : 'false',
-    onclick: () => {
-      const now = list.hidden;
-      list.hidden = !now;
-      btn.setAttribute('aria-expanded', now ? 'true' : 'false');
-      try { localStorage.setItem('linksOpen', now ? '1' : ''); } catch {}
-    },
-  }, T`在其他 ${LINK_SITES.length} 個平台搜尋（開新分頁）`, el('span', { class: 'caret-d' }));
-  box.append(btn, list);
 }
 
 function statusChips(progress, items, onlySource, onPick) {
@@ -349,25 +336,6 @@ function statusChips(progress, items, onlySource, onPick) {
   });
 }
 
-// 讀取完成後，各平台的按鈕收成一顆摘要；點開才列出（用來只看某個平台）。
-// 只看某個平台時，那個平台的按鈕留在摘要旁邊，方便取消。
-let chipsOpen = false;
-try { chipsOpen = localStorage.getItem('chipsOpen') === '1'; } catch {}
-function statusBar(progress, items, onlySource, onPick, rerender) {
-  const chips = statusChips(progress, items, onlySource, onPick);
-  const n = Object.keys(progress).length;
-  const loading = Object.values(progress).some(p => p.status === 'loading');
-  if (loading || n <= 1) return chips;
-  const setOpen = v => { chipsOpen = v; try { localStorage.setItem('chipsOpen', v ? '1' : ''); } catch {} rerender(); };
-  if (chipsOpen) return [...chips, el('button', { type: 'button', class: 'chip chip-fold', onclick: () => setOpen(false) }, T`收起`)];
-  const active = chips.find(c => c.classList.contains('active'));
-  return [
-    el('button', { type: 'button', class: 'chip chip-sum', title: T`依平台篩選`, 'aria-expanded': 'false', onclick: () => setOpen(true) },
-      T`${n} 個平台 · ${items.length} 件`, el('span', { class: 'caret-d' })),
-    active,
-  ].filter(Boolean);
-}
-
 // 失敗的平台：只顯示一行摘要，點一下才展開原因
 function renderErrors(progress, box) {
   const errs = Object.entries(progress).filter(([, p]) => p.status === 'error');
@@ -386,7 +354,7 @@ function renderErrors(progress, box) {
 }
 
 function renderStatus() {
-  $('status').replaceChildren(...statusBar(state.progress, state.items, state.onlySource, name => { state.onlySource = name; renderResults(); }, renderStatus));
+  $('status').replaceChildren(...statusChips(state.progress, state.items, state.onlySource, name => { state.onlySource = name; renderResults(); }));
   const extra = $('statusExtra');
   extra.replaceChildren();
 
@@ -1175,7 +1143,7 @@ function browseItems() {
 
 function renderBrowseStatus() {
   const items = browseFiltered();
-  $('bStatus').replaceChildren(...statusBar(bState.progress, items, bState.onlySource, name => { bState.onlySource = name; renderBrowse(); }, renderBrowseStatus));
+  $('bStatus').replaceChildren(...statusChips(bState.progress, items, bState.onlySource, name => { bState.onlySource = name; renderBrowse(); }));
   // 撿漏篩選
   const extra = $('bStatusExtra');
   extra.replaceChildren();
