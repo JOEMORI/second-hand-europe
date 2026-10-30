@@ -1,4 +1,4 @@
-import { applyFilters, computeDeals, CATEGORIES, SOURCES } from './sources.js';
+import { applyFilters, computeDeals, CATEGORIES, SOURCES, fmt, histKey, histRef, addToHist, pruneHist } from './sources.js';
 import { T, tr, i18nReady, getLang, setLang } from './i18n.js';
 import { checkFavorites } from './favcheck.js';
 
@@ -102,7 +102,8 @@ async function maybeCheckFavs() {
   try {
     const { favAutoRemove = true, favCheckedAt = 0 } = await chrome.storage.local.get(['favAutoRemove', 'favCheckedAt']);
     if (!favAutoRemove || Date.now() - favCheckedAt < 3600e3) return;
-    await checkFavorites({ limit: 40 });
+    const r = await checkFavorites({ limit: 40 });
+    if (r?.dropped?.length) await notifyDrops(r.dropped);
   } catch (e) { console.warn('favorites check', e); }
 }
 
@@ -152,6 +153,9 @@ function checkWatches() {
 async function runCheck() {
   await i18nReady;
   const { watches = [], dealThreshold = 0.3 } = await chrome.storage.local.get(['watches', 'dealThreshold']);
+  // 個人行情紀錄：關鍵字追蹤用累積的行情判斷「低於行情」，也把這次看到的價格記下來
+  const { priceHist = {} } = await chrome.storage.local.get('priceHist');
+  const histAdd = {};
   const startSeeded = Object.fromEntries(watches.map(w => [w.id, JSON.stringify(w.seededNames ?? null)]));
   let found = [];
   for (const w of watches) {
@@ -167,7 +171,9 @@ async function runCheck() {
       // 分類追蹤：有指定關鍵字（在分類裡搜尋）時才檢查標題
       const filtered = applyFilters(items, { ...w, query: w.category ? w.catQuery : w.query, exclude, strict: w.category ? !!w.catQuery && w.strict !== false : w.strict });
       // 素人字詞、分類追蹤的結果型號混雜，算行情沒有意義
-      const flags = w.multi || w.category ? {} : computeDeals(filtered, dealThreshold).flags;
+      const hk = histKey(w.query);
+      const flags = w.multi || w.category ? {} : computeDeals(filtered, dealThreshold, histRef(priceHist[hk])).flags;
+      if (!w.multi && !w.category && !w.min && !w.max) histAdd[hk] = [...(histAdd[hk] || []), ...filtered];
       const seen = new Set(w.seen || []);
       // 還沒記錄過現有商品的平台（建立追蹤時讀取失敗、或關鍵字剛改過）：這次只記錄，不通知
       const seeded = Array.isArray(w.seededNames) ? new Set(w.seededNames) : null;
@@ -198,6 +204,12 @@ async function runCheck() {
     return out;
   });
   const merged = [...found, ...(now.newItems || [])].slice(0, 300);
+  if (Object.keys(histAdd).length) {
+    // 檢查期間搜尋頁可能也寫了行情紀錄：讀最新的再加上去
+    const { priceHist: ph = {} } = await chrome.storage.local.get('priceHist');
+    for (const [k, list] of Object.entries(histAdd)) ph[k] = addToHist(ph[k], list);
+    await chrome.storage.local.set({ priceHist: pruneHist(ph) });
+  }
   await chrome.storage.local.set({ watches: latest, newItems: merged });
   await updateBadge(merged.filter(i => !i.viewed).length);
 
@@ -280,6 +292,28 @@ async function notifyNew(found) {
       message: it.title || '',
       contextMessage: [T`追蹤：${it.query}`, dealTag(it)].filter(Boolean).join(' · '),
       priority: it.deal?.kind === 'deal' ? 2 : 1,
+    }, it.image).catch(e => console.warn('notify', e));
+  }
+}
+
+// 收藏降價：每件一則（最多 3 則），點了打開商品頁
+async function notifyDrops(list) {
+  await i18nReady;
+  const { notifyOn = true, notifySticky = false } = await chrome.storage.local.get(['notifyOn', 'notifySticky']);
+  if (!notifyOn || !list.length) return;
+  const stamp = Date.now();
+  const shown = list.slice(0, MAX_ITEM_NOTES);
+  for (let i = shown.length - 1; i >= 0; i--) {
+    const it = shown[i];
+    const id = `drop-${stamp}-${i}`;
+    if (it.url) await rememberUrl(id, it.url).catch(() => {});
+    await createNote(id, {
+      type: 'basic',
+      requireInteraction: !!notifySticky,
+      title: T`收藏降價：€ ${fmt(it.priceWas)} → € ${fmt(it.price)}`,
+      message: it.title || '',
+      contextMessage: list.length > shown.length && i === 0 ? T`${it.source} · 共 ${list.length} 件降價` : it.source,
+      priority: 2,
     }, it.image).catch(e => console.warn('notify', e));
   }
 }

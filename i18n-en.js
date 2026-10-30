@@ -238,6 +238,7 @@ export const EN = {
   // v1.4
   '自動移除已下架的收藏': 'Remove sold or removed items automatically',
   '定時檢查收藏的商品，已賣掉或下架的會自動移出收藏': 'Saved listings are checked regularly; ones that were sold or taken down are removed from your saved items',
+  '定時檢查收藏的商品：已賣掉或下架的自動移出收藏；降價時跳出通知，卡片上標出原價': 'Saved listings are checked regularly: sold or removed ones leave your saved items, and price drops trigger a notification and show the old price on the card',
   '最近自動移除（': 'Recently removed automatically (',
   '）': ')',
   '這些商品在網站上已經賣掉或下架。如果判斷錯了，按「放回收藏」，之後不會再自動移除這一件。紀錄保留 30 天。': 'These listings were sold or taken down on the marketplace. If one is still available, click "Put back" and it won\'t be removed automatically again. Kept for 30 days.',
@@ -370,4 +371,19 @@ export const EN = {
   '追蹤的項目還沒有新上架': 'Nothing new from your watches yet',
   '有新上架時會出現在這裡。': 'New listings will show up here.',
   '搜尋後按「加入追蹤」，之後新上架的商品會出現在這裡。': 'Search, then click "Watch". New listings will show up here.',
+  // ---- v1.5.4 ----
+  '原本的價格': 'Previous price',
+  '降價 {0}%': '{0}% off',
+  '原價 {0}': 'Was {0}',
+  '，{0} 件降價': ', {0} dropped in price',
+  '收藏降價：€ {0} → € {1}': 'Price drop: € {0} → € {1}',
+  '{0} · 共 {1} 件降價': '{0} · {1} price drops',
+  '同一件商品也刊登在 {0}': 'Also listed on {0}',
+  '行情中位數 {0}（累積 {1} 件）': 'Median price {0} ({1} listings over time)',
+  '根據你搜尋這個關鍵字時看過的 {0} 件商品計算（保留 {1} 天），有運費或手續費資料的用總價': 'Based on {0} listings you have seen for this search (kept {1} days); totals used where shipping or fees are known',
+  '行情紀錄': 'Price history',
+  '每次搜尋同一個關鍵字，都會記下看到的價格（保留 180 天）。累積 20 件以上後，「低於行情」改用這個長期行情判斷，比只看一次搜尋準。設了價格範圍的搜尋不記錄。': 'Each time you search the same keyword, the prices you see are saved (kept 180 days). Once there are 20 or more, "below market" uses this long-term median, which is more reliable than a single search. Searches with a price range are not recorded.',
+  '{0} 個關鍵字': '{0} searches',
+  '還沒有紀錄': 'Nothing yet',
+  '再按一次清除': 'Click again to clear',
 };

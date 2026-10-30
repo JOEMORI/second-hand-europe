@@ -121,6 +121,14 @@
     </div>
     <div class="sp-sec">
       <div class="sp-row">
+        <h3>行情紀錄</h3><button type="button" class="ibtn up" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">每次搜尋同一個關鍵字，都會記下看到的價格（保留 180 天）。累積 20 件以上後，「低於行情」改用這個長期行情判斷，比只看一次搜尋準。設了價格範圍的搜尋不記錄。</span></button>
+        <span class="sp-gap"></span>
+        <span id="histInfo" class="sp-note"></span>
+        <button type="button" id="histClear" class="ghost small">清除</button>
+      </div>
+    </div>
+    <div class="sp-sec">
+      <div class="sp-row">
         <label class="sp-label lang-label" for="langSel"><svg class="ico"><use href="#i-globe"/></svg><span>語言 · Language</span></label>
         <span class="sp-gap"></span>
         <select id="langSel">
@@ -304,7 +312,7 @@
           </div>
         </div>
         <div class="fav-tools">
-          <label class="switch"><input type="checkbox" id="favAuto" checked><span></span>自動移除已下架的收藏</label><button type="button" class="ibtn" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">定時檢查收藏的商品，已賣掉或下架的會自動移出收藏</span></button>
+          <label class="switch"><input type="checkbox" id="favAuto" checked><span></span>自動移除已下架的收藏</label><button type="button" class="ibtn" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">定時檢查收藏的商品：已賣掉或下架的自動移出收藏；降價時跳出通知，卡片上標出原價</span></button>
           <button type="button" id="favCheck" class="ghost small">立即檢查</button>
           <span id="favCheckStatus" class="muted" role="status"></span>
         </div>

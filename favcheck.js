@@ -1,4 +1,5 @@
 // 檢查收藏的商品是否已經賣掉或下架，下架的自動移出收藏（可以在「最近自動移除」復原）。
+// 還在的商品順便讀頁面上的價格，降價的記下原價（卡片上顯示、背景跳通知）。
 // 背景定時檢查（約 12 小時一次）和收藏頁的「立即檢查」都用這裡的程式。
 //
 // 判斷方式，保守為主，讀不到就當作還在：
@@ -6,6 +7,8 @@
 //   - 被轉到別的頁面（例如分類頁）、頁面寫著已售出 / 已結束：可能下架，
 //     連續兩次檢查都這樣才移除，避免網站一時出錯就誤刪
 //   - 被擋、要驗證、網路錯誤：不判斷，下次再查
+
+import { fmt } from './sources.js';
 
 const SOFT_RECHECK = 2 * 3600e3;        // 第一次「可能下架」後 2 小時再確認一次
 const RECHECK_EVERY = 10 * 3600e3;      // 每件商品約 10 小時查一次
@@ -52,24 +55,87 @@ function endedOnPage(url, html) {
 
 const BLOCKED = /captcha-delivery|geo\.captcha|awswaf|challenge-platform|Human Verification|pardon our interruption|Just a moment/i;
 
-// 回傳 'gone'（確定下架）、'soft'（可能下架）、'live'（還在）、'unknown'（讀不到）
-export async function listingStatus(url) {
+// 價格字串轉數字：360、"1650.00"、"1.650,00"、"1,650.00"
+function priceNum(v) {
+  if (typeof v === 'number') return v;
+  let t = String(v ?? '').trim().replace(/[^\d.,]/g, '');
+  if (!t) return null;
+  if (/^\d{1,3}(\.\d{3})+(,\d{1,2})?$/.test(t)) t = t.replace(/\./g, '').replace(',', '.');
+  else if (/^\d+,\d{1,2}$/.test(t)) t = t.replace(',', '.');
+  else t = t.replace(/,/g, '');
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+// 從商品頁讀價格：先看結構化資料（schema.org 的 Offer，Marktplaats、2dehands、willhaben 等），
+// 再看 itemprop="price"（Kleinanzeigen）。讀不到就回傳 null，不猜。
+export function pagePrice(html) {
+  for (const m of html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    let d;
+    try { d = JSON.parse(m[1]); } catch { continue; }
+    const stack = [d];
+    while (stack.length) {
+      const x = stack.pop();
+      if (!x || typeof x !== 'object') continue;
+      if (Array.isArray(x)) { stack.push(...x); continue; }
+      const type = [].concat(x['@type'] || []);
+      if (type.includes('Offer') || type.includes('AggregateOffer')) {
+        const p = priceNum(x.price ?? x.lowPrice);
+        if (p > 0) return { price: p, currency: x.priceCurrency || null };
+      }
+      if (x.offers) stack.push(x.offers);
+      if (x['@graph']) stack.push(x['@graph']);
+    }
+  }
+  const m = html.match(/itemprop="price"\s+content="([\d.,]+)"/) || html.match(/content="([\d.,]+)"\s+itemprop="price"/);
+  const p = m && priceNum(m[1]);
+  if (p > 0) {
+    const c = html.match(/itemprop="priceCurrency"\s+content="([A-Z]{3})"/) || html.match(/content="([A-Z]{3})"\s+itemprop="priceCurrency"/);
+    return { price: p, currency: c ? c[1] : null };
+  }
+  return null;
+}
+
+// 回傳 { status, price, currency }。status：'gone'（確定下架）、'soft'（可能下架）、'live'（還在）、'unknown'（讀不到）
+export async function listingCheck(url) {
   let res;
   try {
     res = await fetch(url, { credentials: 'include', redirect: 'follow', signal: AbortSignal.timeout(15000) });
-  } catch { return 'unknown'; }
-  if (res.status === 404 || res.status === 410) return 'gone';
-  if (!res.ok) return 'unknown';
+  } catch { return { status: 'unknown' }; }
+  if (res.status === 404 || res.status === 410) return { status: 'gone' };
+  if (!res.ok) return { status: 'unknown' };
   const key = listingKey(url);
   if (res.redirected && key && !res.url.includes(key)) {
     // 被轉到登入、同意或驗證頁，不代表下架
-    if (/login|signin|anmelden|inloggen|consent|captcha|challenge|verif/i.test(res.url)) return 'unknown';
-    return 'soft';
+    if (/login|signin|anmelden|inloggen|consent|captcha|challenge|verif/i.test(res.url)) return { status: 'unknown' };
+    return { status: 'soft' };
   }
   let html;
-  try { html = await res.text(); } catch { return 'unknown'; }
-  if (html.length < 60000 && BLOCKED.test(html)) return 'unknown';
-  return endedOnPage(url, html) ? 'soft' : 'live';
+  try { html = await res.text(); } catch { return { status: 'unknown' }; }
+  if (html.length < 60000 && BLOCKED.test(html)) return { status: 'unknown' };
+  if (endedOnPage(url, html)) return { status: 'soft' };
+  return { status: 'live', ...(pagePrice(html) || {}) };
+}
+export const listingStatus = async url => (await listingCheck(url)).status;
+
+// 價格有變：更新收藏的價格；降價時記下原價（priceWas），之後再漲回原價以上就拿掉標示。
+// 只處理歐元標價、不是拍賣或起標的商品；讀到的價格跟原本差太多（不到 1/5 或超過 5 倍）不相信
+export function applyPrice(f, r, t, dropped) {
+  const p = r?.price;
+  if (!(p > 0) || !(f.price > 0) || f.currency !== 'EUR' || (r.currency && r.currency !== 'EUR')) return f;
+  if (f.openPrice || f.isAuction || /起標|bids from/i.test(f.priceLabel || '')) return f;
+  if (Math.abs(p - f.price) < 0.5 || p < f.price * 0.2 || p > f.price * 5) return f;
+  const out = { ...f, price: p, priceLabel: `€ ${fmt(p)}` };
+  if (f.total != null) out.total = Math.round((f.total - f.price + p) * 100) / 100;
+  if (p < f.price) {
+    out.priceWas = Math.max(f.priceWas || 0, f.price);
+    out.priceDropAt = t;
+    dropped.push(out);
+  } else if (f.priceWas && p >= f.priceWas) {
+    delete out.priceWas;
+    delete out.priceDropAt;
+  }
+  return out;
 }
 
 // 檢查到期的收藏，把下架的移到 favRemoved。
@@ -81,18 +147,18 @@ export async function checkFavorites({ limit = 40, force = false, onProgress, ga
   // 背景和收藏頁不要同時檢查
   if (now - favCheckLock < 10 * 60e3) return { checked: 0, removed: [], busy: true };
   const due = favorites
-    .filter(f => f.url && !f.keep && (force || now - (f.checkedAt || 0) > RECHECK_EVERY))
+    .filter(f => f.url && (force || now - (f.checkedAt || 0) > RECHECK_EVERY))
     .sort((a, b) => (a.checkedAt || 0) - (b.checkedAt || 0))
     .slice(0, limit);
   if (!due.length) {
     await chrome.storage.local.set({ favCheckedAt: now });
-    return { checked: 0, removed: [] };
+    return { checked: 0, removed: [], dropped: [] };
   }
   await chrome.storage.local.set({ favCheckLock: now });
   const results = new Map();
   try {
     for (let i = 0; i < due.length; i++) {
-      results.set(due[i].id, await listingStatus(due[i].url));
+      results.set(due[i].id, await listingCheck(due[i].url));
       onProgress?.(i + 1, due.length);
       // 慢慢查，不要一次對網站送一堆請求；寫入儲存區也讓背景程式不會被 Chrome 暫停
       await chrome.storage.local.set({ favCheckLock: Date.now() });
@@ -104,12 +170,14 @@ export async function checkFavorites({ limit = 40, force = false, onProgress, ga
     // 檢查期間你可能新增或移除了收藏：以最新的收藏清單為準
     const { favorites: cur = [], favRemoved = [] } = await chrome.storage.local.get(['favorites', 'favRemoved']);
     const t = Date.now();
-    const removed = [], next = [];
+    const removed = [], next = [], dropped = [];
     for (const f of cur) {
-      const st = results.get(f.id);
-      if (!st || f.keep) { next.push(f); continue; }
+      const r = results.get(f.id), st = r?.status;
+      if (!st) { next.push(f); continue; }
+      // 放回收藏的商品（keep）不自動移除，但價格照樣更新
+      if (f.keep) { next.push(st === 'live' ? applyPrice({ ...f, checkedAt: t }, r, t, dropped) : f); continue; }
       if (st === 'unknown') { next.push({ ...f, checkedAt: t }); continue; }
-      if (st === 'live') { next.push({ ...f, checkedAt: t, goneHits: 0 }); continue; }
+      if (st === 'live') { next.push(applyPrice({ ...f, checkedAt: t, goneHits: 0 }, r, t, dropped)); continue; }
       // 「可能下架」的第二次確認至少要隔 2 小時（連按「立即檢查」不算），避免網站一時出錯就誤刪
       if (st === 'soft' && f.goneHits >= 1 && t - (f.goneAt || 0) < SOFT_RECHECK) { next.push({ ...f, checkedAt: t - RECHECK_EVERY + SOFT_RECHECK }); continue; }
       const hits = st === 'gone' ? 2 : (f.goneHits || 0) + 1;
@@ -118,7 +186,7 @@ export async function checkFavorites({ limit = 40, force = false, onProgress, ga
     }
     const keptRemoved = [...removed, ...favRemoved].filter(x => t - (x.removedAt || 0) < KEEP_REMOVED).slice(0, 100);
     await chrome.storage.local.set({ favorites: next, favRemoved: keptRemoved, favCheckedAt: t, favCheckLock: 0 });
-    checkFavorites.last = { checked: results.size, removed };
+    checkFavorites.last = { checked: results.size, removed, dropped };
   }
   return checkFavorites.last;
 }

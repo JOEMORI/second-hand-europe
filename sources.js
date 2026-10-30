@@ -1153,25 +1153,84 @@ const median = arr => {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 };
 
-// 用目前結果的中位數當行情：低於行情 threshold 以上就標記。
-// 拍賣（起標價、出價中）不算，因為顯示的不是最終價格。
-export function computeDeals(items, threshold = 0.3) {
-  let prices = items.filter(i => cmpPrice(i) > 0 && !i.isAuction && !PARTS_RE.test(i.title)).map(cmpPrice);
-  if (prices.length < 5) return { median: null, n: prices.length, flags: {} };
-  // 第二輪：去掉便宜得不合理的（配件、說明書）再算一次，避免拉低行情
+// 算行情用的價格：有標價、不是拍賣、不是故障 / 零件機
+export const eligiblePrice = i => (cmpPrice(i) > 0 && !i.isAuction && !PARTS_RE.test(i.title || '') ? cmpPrice(i) : null);
+
+// 中位數；先去掉便宜得不合理的（配件、說明書）再算，避免拉低行情。少於 5 件不算
+export function robustMedian(prices) {
+  if (prices.length < 5) return null;
   const rough = median(prices);
   const trimmed = prices.filter(p => p >= rough * 0.15);
-  if (trimmed.length >= 5) prices = trimmed;
-  const med = median(prices);
+  const use = trimmed.length >= 5 ? trimmed : prices;
+  return { median: median(use), n: use.length };
+}
+
+// 用中位數當行情：低於行情 threshold 以上就標記。
+// 拍賣（起標價、出價中）不算，因為顯示的不是最終價格。
+// ref：個人行情紀錄（同一個關鍵字過去看過的價格），累積 HIST_MIN 件以上就改用它
+export const HIST_MIN = 20;
+export function computeDeals(items, threshold = 0.3, ref = null) {
+  const prices = items.map(eligiblePrice).filter(p => p != null);
+  const hist = ref && ref.n >= HIST_MIN && ref.median > 0 ? ref : null;
+  const base = hist || robustMedian(prices);
+  if (!base) return { median: null, n: prices.length, flags: {} };
+  const med = base.median;
   const flags = {};
   for (const i of items) {
     const p = cmpPrice(i);
-    if (PARTS_RE.test(i.title)) { flags[i.id] = { kind: 'parts' }; continue; }
+    if (PARTS_RE.test(i.title || '')) { flags[i.id] = { kind: 'parts' }; continue; }
     if (!(p > 0) || i.isAuction || !threshold) continue;
     if (p < med * 0.15) flags[i.id] = { kind: 'odd' }; // 便宜得不合理：多半是配件
     else if (1 - p / med >= threshold) flags[i.id] = { kind: 'deal', pct: Math.round((1 - p / med) * 100) };
   }
-  return { median: med, n: prices.length, flags };
+  return { median: med, n: base.n, hist: !!hist, flags };
+}
+
+// ---------- 個人行情紀錄 ----------
+// 每個關鍵字存最近 180 天看過的商品價格（同一件只算一次，最多 400 件），最多保留 80 個關鍵字
+export const HIST_DAYS = 180;
+export const histKey = (q, cat = '') => `${cat || ''}|${String(q || '').toLowerCase().replace(/\s+/g, ' ').trim()}`;
+export function addToHist(entry, items, now = Date.now()) {
+  const map = { ...(entry?.items || {}) };
+  for (const i of items) {
+    const p = eligiblePrice(i);
+    if (p != null) map[i.id] = [Math.round(p * 100) / 100, now];
+  }
+  const kept = Object.entries(map)
+    .filter(([, v]) => now - v[1] < HIST_DAYS * 86400e3)
+    .sort((a, b) => b[1][1] - a[1][1])
+    .slice(0, 400);
+  return { at: now, items: Object.fromEntries(kept) };
+}
+export const pruneHist = all => Object.fromEntries(Object.entries(all || {}).sort((a, b) => (b[1]?.at || 0) - (a[1]?.at || 0)).slice(0, 80));
+export function histRef(entry) {
+  if (!entry?.items) return null;
+  const cut = Date.now() - HIST_DAYS * 86400e3;
+  return robustMedian(Object.values(entry.items).filter(v => v[1] > cut).map(v => v[0]));
+}
+
+// ---------- 合併重複刊登 ----------
+// 同一個賣家常把同一件商品同時刊在兩個平台（例如 Marktplaats 和 2dehands，兩邊的商品編號不同）。
+// 不同平台、標題相同（不分大小寫、標點、重音）、價格也完全相同的，合併成一張卡片，
+// 第一張留著，其他平台記在 alsoOn。標題太短（例如只寫 camera）不合併，避免誤判。
+const dupTitle = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+export function mergeDupes(items) {
+  const at = new Map(), out = [];
+  for (const it of items) {
+    const t = dupTitle(it.title);
+    const key = it.price > 0 && t.length >= 10 ? `${t}|${Math.round(it.price * 100)}` : null;
+    const idx = key != null ? at.get(key) : undefined;
+    if (idx !== undefined) {
+      const first = out[idx];
+      if (first.source !== it.source && !first.alsoOn.some(x => x.source === it.source)) {
+        first.alsoOn.push({ source: it.source, url: it.url, id: it.id });
+        continue;
+      }
+    }
+    if (key != null && idx === undefined) at.set(key, out.length);
+    out.push({ ...it, alsoOn: [] });
+  }
+  return out;
 }
 
 // ---------- 撿漏：分類瀏覽用（素人線索） ----------

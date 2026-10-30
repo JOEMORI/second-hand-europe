@@ -4,6 +4,7 @@ import {
   searchAll, searchMulti, browseAll, applyFilters, computeDeals, computeBrowseFlags, sortNewest, cmpPrice, fmt,
   LINK_SITES, SOURCES, DEFAULT_SOURCES, CATEGORIES, CATALOG, catGroup, STARTER_CATS, LEGACY_CATS,
   REGIONS, regionOf, countryRank, countryName, catSources, taskSource, catHow, parseWords, checkBids, vintedCond,
+  mergeDupes, histKey, histRef, addToHist, pruneHist, HIST_DAYS,
 } from './sources.js';
 import { T, tr, i18nReady, translateDom, locale, getLang, relTime } from './i18n.js';
 import { checkFavorites, restoreFavorite } from './favcheck.js';
@@ -215,6 +216,8 @@ async function runSearch(override, { stay = false } = {}) {
   state.onlySource = null;
   state.onlyDeals = false;
   state.naive = !!v.naive;
+  state.hist = null;
+  state.histKey = !v.multi && !v.naive && v.query ? histKey(v.query, cat?.key) : null;
   const allSources = cat ? catSources(cat, v.sources, v.query) : [...new Set(subs.flatMap(s => s.sources))];
   state.progress = Object.fromEntries(allSources.map(k => [k, { status: 'loading', count: 0 }]));
   renderStatus();
@@ -238,6 +241,7 @@ async function runSearch(override, { stay = false } = {}) {
   state.paging = v.multi ? {} : (res.paging || {});
   applySearchFilters();
   refreshBids(gen);
+  if (state.histKey) recordHist(gen);
   if (!override) { try { localStorage.setItem('lastForm', JSON.stringify(v)); } catch {} }
 }
 
@@ -296,6 +300,23 @@ async function loadMoreResults() {
   Object.assign(state.paging, res.paging);
   applySearchFilters();
   refreshBids(gen);
+  if (state.histKey) recordHist(gen);
+}
+
+// 個人行情紀錄：讀出這個關鍵字累積的價格當行情；沒有設價格範圍時，把這次看到的價格加進去
+// （設了價格範圍的結果只是一部分，加進去會讓行情偏掉）
+async function recordHist(gen) {
+  const key = state.histKey;
+  const { priceHist = {} } = await store.get('priceHist');
+  let entry = priceHist[key];
+  const f = formFiltersNow();
+  if (!f.min && !f.max && state.items.length) {
+    entry = addToHist(entry, mergeDupes(state.items)); // 同一件商品刊在兩個平台只算一次
+    await store.set({ priceHist: pruneHist({ ...priceHist, [key]: entry }) });
+  }
+  if (state.gen !== gen || state.histKey !== key) return;
+  state.hist = histRef(entry);
+  renderResults();
 }
 
 // Marktplaats / 2dehands 的「出價」商品：到商品頁讀最低出價、最高出價，讀到就更新畫面
@@ -366,8 +387,11 @@ function renderStatus() {
     } else if (state.threshold && state.deals.median != null) {
       const nDeals = Object.values(state.deals.flags).filter(f => f.kind === 'deal').length;
       extra.append(
-        el('span', { class: 'market first', title: T`根據 ${state.deals.n} 件有標價、非拍賣、非故障的商品計算，有運費或手續費資料的用總價` },
-          T`行情中位數 ${eurRound(state.deals.median)}`),
+        state.deals.hist
+          ? el('span', { class: 'market first', title: T`根據你搜尋這個關鍵字時看過的 ${state.deals.n} 件商品計算（保留 ${HIST_DAYS} 天），有運費或手續費資料的用總價` },
+            T`行情中位數 ${eurRound(state.deals.median)}（累積 ${state.deals.n} 件）`)
+          : el('span', { class: 'market first', title: T`根據 ${state.deals.n} 件有標價、非拍賣、非故障的商品計算，有運費或手續費資料的用總價` },
+            T`行情中位數 ${eurRound(state.deals.median)}`),
         el('button', {
           type: 'button',
           class: 'chip deal-toggle' + (state.onlyDeals ? ' active' : ''),
@@ -404,12 +428,13 @@ function sortItems(items, mode, flags = {}) {
 function renderResults() {
   // 行情以「目前所有平台的結果」計算，不受「只看某平台」影響。
   // 素人字詞搜尋型號混雜，改用分類瀏覽的標示方式（素人線索）
+  const merged = mergeDupes(state.items);
   state.deals = state.naive
-    ? { median: null, n: 0, flags: computeBrowseFlags(state.items).flags }
-    : computeDeals(state.items, state.threshold);
+    ? { median: null, n: 0, flags: computeBrowseFlags(merged).flags }
+    : computeDeals(merged, state.threshold, state.hist);
   renderStatus();
-  let items = sortItems(state.items, $('sort').value, state.deals.flags);
-  if (state.onlySource) items = items.filter(i => i.source === state.onlySource);
+  let items = sortItems(merged, $('sort').value, state.deals.flags);
+  if (state.onlySource) items = items.filter(i => fromSource(i, state.onlySource));
   if (state.onlyDeals) items = items.filter(i => state.deals.flags[i.id]?.kind === 'deal');
   $('results').replaceChildren(...items.map(it => card(it, { flag: state.deals.flags[it.id], matched: state.naive ? it.matchedQuery : null })));
   const done = Object.values(state.progress).every(p => p.status !== 'loading');
@@ -419,6 +444,24 @@ function renderResults() {
   }
   const more = Object.values(state.paging).some(p => !p.done);
   $('more').hidden = !more || !done || state.loadingMore;
+}
+
+// 只看某個平台：合併的卡片只要其中一個平台符合就顯示
+const fromSource = (i, name) => i.source === name || !!i.alsoOn?.some(a => a.source === name);
+
+// 照片左上的平台標籤；同一件商品也刊在別的平台時，一起列出
+function srcTag(it) {
+  const more = it.alsoOn || [];
+  return el('span', { class: 'tag', style: `--c:${colorOf(it.source)}`, title: more.length ? T`同一件商品也刊登在 ${more.map(a => a.source).join('、')}` : null },
+    el('i'), it.source,
+    ...more.map(a => [el('span', { class: 'tag-plus' }, '+'), el('i', { style: `background:${colorOf(a.source)}` }), a.source]));
+}
+
+// 收藏降價：劃掉的原價和「降價 x%」
+function dropEls(it) {
+  if (!(it.priceWas > it.price)) return null;
+  const pct = Math.round((1 - it.price / it.priceWas) * 100);
+  return [el('s', { class: 'was', title: T`原本的價格` }, eurRound(it.priceWas)), el('span', { class: 'badge-drop' }, T`降價 ${pct}%`)];
 }
 
 function card(it, opts = {}) {
@@ -442,12 +485,12 @@ function card(it, opts = {}) {
   const node = el('a', { class: 'card' + (flag?.kind === 'deal' ? ' is-deal' : ''), href: it.url, target: '_blank', rel: 'noopener' },
     el('div', { class: 'img' },
       it.image ? el('img', { src: it.image, loading: 'lazy', alt: '', referrerpolicy: 'no-referrer' }) : null,
-      el('span', { class: 'tag', style: `--c:${colorOf(it.source)}` }, el('i'), it.source),
+      srcTag(it),
       star,
     ),
     el('div', { class: 'body' },
       // 價格和標記同一行；總價或當地價格一行小字
-      el('div', { class: 'price-row' }, el('span', { class: 'price' }, it.priceLabel), badge),
+      el('div', { class: 'price-row' }, el('span', { class: 'price' }, it.priceLabel), dropEls(it), badge),
       it.total != null ? el('div', { class: 'total', title: it.totalNote || '' }, T`總價約 € ${fmt(it.total)}`) : null,
       it.localLabel ? el('div', { class: 'total', title: T`依歐洲央行匯率換算` }, T`當地價格 ${it.localLabel}`) : null,
       el('div', { class: 'title' }, it.title),
@@ -469,6 +512,7 @@ function card(it, opts = {}) {
     listSite(it),
     el('div', { class: 'lc-price' },
       el('b', {}, it.priceLabel),
+      it.priceWas > it.price ? el('small', { class: 'was-line' }, T`原價 ${eurRound(it.priceWas)}`) : null,
       it.total != null ? el('small', { title: it.totalNote || '' }, T`總價約 € ${fmt(it.total)}`) : null,
       it.localLabel ? el('small', {}, T`當地價格 ${it.localLabel}`) : null),
     listDate(it),
@@ -480,7 +524,7 @@ function card(it, opts = {}) {
 const srcByName = name => Object.values(SOURCES).find(s => s.name === name);
 function listSite(it) {
   const s = srcByName(it.source);
-  return el('div', { class: 'lc-site' }, s ? ccBadge(s.cc) : null, el('span', {}, it.source));
+  return el('div', { class: 'lc-site' }, s ? ccBadge(s.cc) : null, el('span', {}, [it.source, ...(it.alsoOn || []).map(a => a.source)].join(' + ')));
 }
 function listDate(it) {
   if (it.ts) {
@@ -644,7 +688,7 @@ async function renderFavs() {
           el('span', { class: 'tag inline', style: `--c:${colorOf(f.source)}` }, f.source),
           el('a', { class: 'title', href: f.url, target: '_blank', rel: 'noopener' }, f.title),
         ),
-        el('div', { class: 'price' }, f.priceLabel, f.total != null ? el('span', { class: 'total inline' }, T`總價約 € ${fmt(f.total)}`) : null,
+        el('div', { class: 'price' }, f.priceLabel, dropEls(f), f.total != null ? el('span', { class: 'total inline' }, T`總價約 € ${fmt(f.total)}`) : null,
           f.localLabel ? el('span', { class: 'total inline' }, T`當地價格 ${f.localLabel}`) : null),
         el('div', { class: 'meta' }, [f.location, f.extra, T`收藏於 ${new Date(f.savedAt).toLocaleDateString(locale())}`].filter(Boolean).join(' · ')),
         note,
@@ -690,13 +734,14 @@ async function runFavCheck(force) {
     else if (!r.checked) status.textContent = force ? T`沒有需要檢查的收藏` : '';
     else if (r.removed.length) status.textContent = T`檢查了 ${r.checked} 件，移除 ${r.removed.length} 件已下架的商品`;
     else status.textContent = T`檢查了 ${r.checked} 件，都還在`;
+    if (r?.dropped?.length) status.textContent += T`，${r.dropped.length} 件降價`;
   } catch (e) {
     status.textContent = T`檢查失敗：${e?.message || e}`;
   } finally {
     favChecking = false;
     btn.disabled = false;
     // 有移除才重畫，避免正在寫的備註被打斷
-    if (r?.removed?.length) renderFavs(); else renderRemoved();
+    if (r?.removed?.length || r?.dropped?.length) renderFavs(); else renderRemoved();
   }
 }
 $('favCheck').addEventListener('click', () => runFavCheck(true));
@@ -1122,11 +1167,11 @@ function browseFiltered() {
 }
 
 function browseItems() {
-  const all = browseFiltered();
+  const all = mergeDupes(browseFiltered());
   // 標示以「所有平台、目前篩選後」的結果計算
   bState.flags = computeBrowseFlags(all).flags;
   let items = all;
-  if (bState.onlySource) items = items.filter(i => i.source === bState.onlySource);
+  if (bState.onlySource) items = items.filter(i => fromSource(i, bState.onlySource));
   if (bState.onlyFlag === 'clue') items = items.filter(i => isClue(bState.flags[i.id]));
   const mode = $('bSort').value;
   if (mode === 'bargain') {
@@ -1451,7 +1496,7 @@ async function renderNew(markViewed) {
   if (!newItems.length) {
     $('newList').replaceChildren(el('div', { class: 'empty' }, el('p', {}, T`目前沒有新上架`), el('p', { class: 'sub' }, T`加入追蹤之後才上架的商品會出現在這裡。`)));
   } else {
-    $('newList').replaceChildren(...newItems.map(i => card(i, { query: i.query, matched: i.matchedQuery })));
+    $('newList').replaceChildren(...mergeDupes(newItems).map(i => card(i, { query: i.query, matched: i.matchedQuery })));
   }
   renderHome(newItems, unseen);
   if (markViewed && unseen) {
@@ -1495,7 +1540,7 @@ async function renderHome(newItems, unseen) {
     unseen = newItems.filter(i => !i.viewed).length;
   }
   $('homeCount').textContent = unseen || '';
-  const shown = newItems.slice(0, 8);
+  const shown = mergeDupes(newItems).slice(0, 8);
   $('homeList').replaceChildren(...shown.map(i => card(i, { query: i.query, matched: i.matchedQuery })));
   $('homeAll').hidden = !newItems.length;
   const empty = $('homeEmpty');
@@ -1527,6 +1572,25 @@ document.addEventListener('mousedown', e => {
   if ($('settingsPanel').hidden) return;
   if (e.target.closest('#settingsPanel, #settingsBtn')) return;
   setSettings(false);
+});
+
+// 行情紀錄：顯示累積了幾個關鍵字，按兩次清除
+async function renderHistInfo() {
+  const { priceHist = {} } = await store.get('priceHist');
+  const n = Object.keys(priceHist).length;
+  $('histInfo').textContent = n ? T`${n} 個關鍵字` : T`還沒有紀錄`;
+  $('histClear').disabled = !n;
+  $('histClear').textContent = T`清除`;
+  delete $('histClear').dataset.armed;
+}
+$('settingsBtn').addEventListener('click', () => { if (!$('settingsPanel').hidden) renderHistInfo(); });
+$('histClear').addEventListener('click', async () => {
+  const btn = $('histClear');
+  if (!btn.dataset.armed) { btn.dataset.armed = '1'; btn.textContent = T`再按一次清除`; return; }
+  await store.remove('priceHist');
+  state.hist = null;
+  if (state.items.length) renderResults();
+  renderHistInfo();
 });
 
 // ---------- ⓘ 說明：滑鼠滑過或鍵盤移到時顯示；觸控螢幕點一下打開、再點一下關閉 ----------
