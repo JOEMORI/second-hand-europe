@@ -1,10 +1,10 @@
-SECOND HAND EUROPE  v1.5.2  -  HOW TO UPDATE & WHAT'S NEW
+SECOND HAND EUROPE  v1.5.3  -  HOW TO UPDATE & WHAT'S NEW
 ==========================================================
 Second Hand Europe (formerly Gear Search) searches second-hand
 marketplaces across Europe in one go.
 (中文說明在下面)
 
-Part 0: what changed from v1.5.1 to v1.5.2 (small clean-up).
+Part 0: what changed from v1.5.1 to v1.5.3 (small clean-up).
 Part 1: what changed from v1.5 to v1.5.1 (a cleaner interface).
 Part 2: what changed from v1.4 to v1.5.
 Part 3: what changed from v1.3 to v1.4.
@@ -26,7 +26,7 @@ extension from. Keep using the SAME folder and nothing is lost.
    when asked.
 4. Go to  chrome://extensions  and click the round reload arrow on
    the extension (now called Second Hand Europe).
-5. Open it again. chrome://extensions should show version 1.5.2.
+5. Open it again. chrome://extensions should show version 1.5.3.
 
 Do NOT click "Remove" and load a new folder: Chrome treats that as a
 new extension and your saved items and watches would be gone.
@@ -36,15 +36,10 @@ just in case.
 
 
 
-WHAT'S NEW IN v1.5.2 (compared with v1.5.1)
+WHAT'S NEW IN v1.5.3 (compared with v1.5.1)
 -------------------------------------------
 - No more pop-up preview when you hover over a listing; the card
   already shows the large photo and all the details.
-- Above the results, the marketplace buttons fold into one button
-  ("5 marketplaces · 128 listings") once loading is done. Click it to
-  filter by marketplace. Market price, bargains and load errors now
-  sit on the same line.
-- The 16 "more marketplaces" links fold into one button.
 - "Watch: ..." on cards is now small grey text.
 - Fix: Vinted conditions such as "Good" are now translated.
 
@@ -288,7 +283,7 @@ Good to know
 
 歐洲二手搜尋 Second Hand Europe（原名 Gear Search 二手器材搜尋）：一次搜尋歐洲各國的二手平台。
 
-第零部分是 v1.5.2 跟 v1.5.1 的差別（小整理），第一部分是 v1.5.1 跟 v1.5 的差別（介面整理），第二部分是 v1.5 跟 v1.4 的差別，第三部分是 v1.4 跟 v1.3 的差別，第四部分是 v1.3 跟 v1.2 的差別，第五部分是 v1.2 跟第一版 v1.0.0 比多了什麼。
+第零部分是 v1.5.3 跟 v1.5.1 的差別（小整理），第一部分是 v1.5.1 跟 v1.5 的差別（介面整理），第二部分是 v1.5 跟 v1.4 的差別，第三部分是 v1.4 跟 v1.3 的差別，第四部分是 v1.3 跟 v1.2 的差別，第五部分是 v1.2 跟第一版 v1.0.0 比多了什麼。
 從更舊的版本更新的話，你的版本之後的每一部分都適用。
 
 怎麼更新（約 2 分鐘，收藏和追蹤都會保留）
@@ -299,16 +294,14 @@ Good to know
 2. 把新的 second-hand-europe.zip 解壓縮到別的地方。
 3. 把新資料夾裡的所有檔案複製到原本的資料夾（舊資料夾名稱不用改），問你要不要取代時選「取代」。
 4. 打開 chrome://extensions，按插件（現在叫「歐洲二手搜尋」）上的圓形重新載入箭頭。
-5. 重新打開插件。chrome://extensions 上應該顯示 1.5.2 版。
+5. 重新打開插件。chrome://extensions 上應該顯示 1.5.3 版。
 
 不要按「移除」再載入新資料夾：Chrome 會當成新的插件，收藏和追蹤就沒了。
 從 v1.2 開始，也可以先按「匯出備份」以防萬一（v1.5.1 起在側欄最底下齒輪的「設定」裡）。
 
-v1.5.2 跟 v1.5.1 差在哪（小整理）
+v1.5.3 跟 v1.5.1 差在哪（小整理）
 --------------------------------
 - 拿掉滑過商品卡片時跳出的放大預覽，卡片本身已經是大圖和完整資訊。
-- 搜尋結果上方：讀取完成後，各平台的按鈕收成一顆「5 個平台 · 128 件」，點開才能只看某個平台；行情、只看疑似便宜、讀取失敗都排在同一行。
-- 「其他平台」的 16 個連結收成一個按鈕。
 - 卡片上的「追蹤：…」改成灰色小字。
 - 修正：Vinted 的商品狀態（Good 等）現在會翻成中文。
 
