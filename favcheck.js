@@ -1,4 +1,5 @@
-// 檢查收藏的商品是否已經賣掉或下架，下架的自動移出收藏（可以在「最近自動移除」復原）。
+// 檢查收藏的商品是否已經賣掉或下架。下架的自動移出收藏（可以在「最近自動移除」復原）；
+// 頁面寫著已售出的留在收藏、標成「已售出」（成交價可以當行情參考），要清掉按「清除已售出」。
 // 還在的商品順便讀頁面上的價格，降價的記下原價（卡片上顯示、背景跳通知）。
 // 背景定時檢查（約 12 小時一次）和收藏頁的「立即檢查」都用這裡的程式。
 //
@@ -6,6 +7,7 @@
 //   - 網站回 404 / 410（找不到、已刪除）：確定下架，直接移除
 //   - 被轉到別的頁面（例如分類頁）、頁面寫著已售出 / 已結束：可能下架，
 //     連續兩次檢查都這樣才移除，避免網站一時出錯就誤刪
+//   - 頁面明確寫著已售出（Vinted 的商品資料、eBay 的「已售出」說明）：標成已售出，不移除、不再檢查
 //   - 被擋、要驗證、網路錯誤：不判斷，下次再查
 
 import { fmt } from './sources.js';
@@ -25,9 +27,15 @@ export function listingKey(url) {
   } catch { return null; }
 }
 
-// 頁面上明確寫著已售出 / 已結束（各網站的寫法）
+// 頁面上明確寫著已售出（各網站的寫法）
+const SOLD = [
+  /schema\.org\/SoldOut"/,                                                  // 很多網站的結構化資料
+  /This listing sold on|Dieser Artikel wurde (am [^<]{1,40}? )?verkauft|Dieses Angebot wurde am [^<]{1,40}? verkauft/i,   // eBay
+];
+
+// 頁面上明確寫著已結束、已刪除（各網站的寫法）
 const ENDED = [
-  /schema\.org\/(SoldOut|Discontinued)"/,                                   // 很多網站的結構化資料
+  /schema\.org\/Discontinued"/,                                             // 很多網站的結構化資料
   /Dieses Angebot wurde (vom Verkäufer )?beendet|Diese Auktion (ist|wurde) beendet|This listing (was ended|has ended)|Der Verkäufer hat diesen Artikel beendet/i,   // eBay
   /Die Anzeige ist nicht mehr verfügbar|Diese Anzeige ist (leider )?nicht mehr verfügbar|Anzeige wurde gelöscht/i,   // Kleinanzeigen、willhaben
   /Inzerát (byl smazán|neexistuje|nebyl nalezen)|Inzerát (bol|bol už) (zmazaný|vymazaný)|Inzerát neexistuje/i,   // Bazoš
@@ -35,25 +43,30 @@ const ENDED = [
   /Deze advertentie is niet (meer )?beschikbaar|Deze advertentie is verwijderd/i,   // Marktplaats、2dehands
 ];
 
-function endedOnPage(url, html) {
+// 回傳 'sold'（已售出）、'ended'（已結束 / 刪除）或 null（看起來還在）
+export function pageState(url, html) {
   if (/vinted\./.test(url)) {
-    // Vinted 的商品資料裡有一段專門描述這件商品能不能買（用商品編號對到同一段，
-    // 不會誤看頁面上其他推薦商品）。賣掉或下架後 can_buy 會變成 false；保留中不算。
     const id = listingKey(url);
-    const m = id && html.match(new RegExp('\\{\\\\"can_buy\\\\":(true|false)[^{}]{0,300}?\\\\"item_id\\\\":\\\\"' + id + '\\\\"'));
-    if (!m) return false;
-    const seg = m[0];
-    if (/\\"is_hidden\\":true/.test(seg)) return true;
-    return m[1] === 'false' && !/\\"is_reserved\\":true/.test(seg);
+    if (!id) return null;
+    // Vinted 的商品資料（欄位照字母排序，用商品編號對到這一件，不會看到頁面上其他推薦商品）：
+    // 賣掉後 is_closed 變成 true，頁面上顯示「Verkocht / Sold」
+    const c = html.match(new RegExp('\\\\"is_closed\\\\":(true|false),\\\\"item_id\\\\":\\\\"' + id + '\\\\"'));
+    if (c) return c[1] === 'true' ? 'sold' : null;
+    // 舊版頁面：專門描述能不能買的一段，can_buy 是 false、又不是保留中就是賣掉了；被隱藏算下架
+    const m = html.match(new RegExp('\\{\\\\"can_buy\\\\":(true|false)[^{}]{0,300}?\\\\"item_id\\\\":\\\\"' + id + '\\\\"'));
+    if (!m) return null;
+    if (/\\"is_hidden\\":true/.test(m[0])) return 'ended';
+    return m[1] === 'false' && !/\\"is_reserved\\":true/.test(m[0]) ? 'sold' : null;
   }
   // 結構化資料同時寫著有貨的話，以有貨為準
-  if (/schema\.org\/InStock"/.test(html)) return false;
+  if (/schema\.org\/InStock"/.test(html)) return null;
   // 北歐的 DBA、Blocket、Tori 每件都是單一商品，缺貨就是賣掉了
-  if (/(dba\.dk|blocket\.se|tori\.fi)\//.test(url) && /schema\.org\/OutOfStock"/.test(html)) return true;
-  return ENDED.some(re => re.test(html));
+  if (/(dba\.dk|blocket\.se|tori\.fi)\//.test(url) && /schema\.org\/OutOfStock"/.test(html)) return 'sold';
+  if (SOLD.some(re => re.test(html))) return 'sold';
+  return ENDED.some(re => re.test(html)) ? 'ended' : null;
 }
 
-const BLOCKED = /captcha-delivery|geo\.captcha|awswaf|challenge-platform|Human Verification|pardon our interruption|Just a moment/i;
+const BLOCKED = /captcha-delivery|geo\.captcha|awswaf|challenge-platform|Human Verification|pardon our interruption|Bitte entschuldigen Sie die Störung|splashui\/(challenge|captcha)|Just a moment/i;
 
 // 價格字串轉數字：360、"1650.00"、"1.650,00"、"1,650.00"
 function priceNum(v) {
@@ -67,8 +80,8 @@ function priceNum(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-// 從商品頁讀價格：先看結構化資料（schema.org 的 Offer，Marktplaats、2dehands、willhaben 等），
-// 再看 itemprop="price"（Kleinanzeigen）。讀不到就回傳 null，不猜。
+// 從商品頁讀價格：先看結構化資料（schema.org 的 Offer，Marktplaats、2dehands、willhaben、eBay 等），
+// 再看 itemprop="price"（Kleinanzeigen），最後看 eBay 商品頁的主要價格區塊。讀不到就回傳 null，不猜。
 export function pagePrice(html) {
   for (const m of html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
     let d;
@@ -93,10 +106,14 @@ export function pagePrice(html) {
     const c = html.match(/itemprop="priceCurrency"\s+content="([A-Z]{3})"/) || html.match(/content="([A-Z]{3})"\s+itemprop="priceCurrency"/);
     return { price: p, currency: c ? c[1] : null };
   }
+  // eBay：<div class="x-price-primary"><span class="ux-textspans">EUR 349,00</span>（拍賣頁另外有出價資訊，不讀）
+  const e = html.match(/class="x-price-primary"[^>]*>(?:\s*<[^>]+>\s*){0,3}(EUR|€)\s*([\d.,]+)/);
+  const pe = e && priceNum(e[2]);
+  if (pe > 0) return { price: pe, currency: 'EUR' };
   return null;
 }
 
-// 回傳 { status, price, currency }。status：'gone'（確定下架）、'soft'（可能下架）、'live'（還在）、'unknown'（讀不到）
+// 回傳 { status, price, currency }。status：'gone'（確定下架）、'soft'（可能下架）、'sold'（已售出）、'live'（還在）、'unknown'（讀不到）
 export async function listingCheck(url) {
   let res;
   try {
@@ -113,7 +130,9 @@ export async function listingCheck(url) {
   let html;
   try { html = await res.text(); } catch { return { status: 'unknown' }; }
   if (html.length < 60000 && BLOCKED.test(html)) return { status: 'unknown' };
-  if (endedOnPage(url, html)) return { status: 'soft' };
+  const st = pageState(url, html);
+  if (st === 'sold') return { status: 'sold' };
+  if (st === 'ended') return { status: 'soft' };
   return { status: 'live', ...(pagePrice(html) || {}) };
 }
 export const listingStatus = async url => (await listingCheck(url)).status;
@@ -146,13 +165,14 @@ export async function checkFavorites({ limit = 40, force = false, onProgress, ga
   if (!favAutoRemove && !force) return { checked: 0, removed: [] };
   // 背景和收藏頁不要同時檢查
   if (now - favCheckLock < 10 * 60e3) return { checked: 0, removed: [], busy: true };
+  // 已售出的不再檢查
   const due = favorites
-    .filter(f => f.url && (force || now - (f.checkedAt || 0) > RECHECK_EVERY))
+    .filter(f => f.url && !f.soldAt && (force || now - (f.checkedAt || 0) > RECHECK_EVERY))
     .sort((a, b) => (a.checkedAt || 0) - (b.checkedAt || 0))
     .slice(0, limit);
   if (!due.length) {
     await chrome.storage.local.set({ favCheckedAt: now });
-    return { checked: 0, removed: [], dropped: [] };
+    return { checked: 0, removed: [], dropped: [], sold: [] };
   }
   await chrome.storage.local.set({ favCheckLock: now });
   const results = new Map();
@@ -170,10 +190,17 @@ export async function checkFavorites({ limit = 40, force = false, onProgress, ga
     // 檢查期間你可能新增或移除了收藏：以最新的收藏清單為準
     const { favorites: cur = [], favRemoved = [] } = await chrome.storage.local.get(['favorites', 'favRemoved']);
     const t = Date.now();
-    const removed = [], next = [], dropped = [];
+    const removed = [], next = [], dropped = [], sold = [];
     for (const f of cur) {
       const r = results.get(f.id), st = r?.status;
       if (!st) { next.push(f); continue; }
+      // 已售出：留在收藏，標上售出時間（放回收藏的也一樣）
+      if (st === 'sold') {
+        const out = { ...f, checkedAt: t, goneHits: 0, soldAt: f.soldAt || t };
+        if (!f.soldAt) sold.push(out);
+        next.push(out);
+        continue;
+      }
       // 放回收藏的商品（keep）不自動移除，但價格照樣更新
       if (f.keep) { next.push(st === 'live' ? applyPrice({ ...f, checkedAt: t }, r, t, dropped) : f); continue; }
       if (st === 'unknown') { next.push({ ...f, checkedAt: t }); continue; }
@@ -186,9 +213,22 @@ export async function checkFavorites({ limit = 40, force = false, onProgress, ga
     }
     const keptRemoved = [...removed, ...favRemoved].filter(x => t - (x.removedAt || 0) < KEEP_REMOVED).slice(0, 100);
     await chrome.storage.local.set({ favorites: next, favRemoved: keptRemoved, favCheckedAt: t, favCheckLock: 0 });
-    checkFavorites.last = { checked: results.size, removed, dropped };
+    checkFavorites.last = { checked: results.size, removed, dropped, sold };
   }
   return checkFavorites.last;
+}
+
+// 清除已售出：移到「最近自動移除」（30 天內還可以放回收藏）
+export async function clearSold() {
+  const { favorites = [], favRemoved = [] } = await chrome.storage.local.get(['favorites', 'favRemoved']);
+  const t = Date.now();
+  const out = favorites.filter(f => f.soldAt).map(f => ({ ...f, removedAt: t }));
+  if (!out.length) return 0;
+  await chrome.storage.local.set({
+    favorites: favorites.filter(f => !f.soldAt),
+    favRemoved: [...out, ...favRemoved].filter(x => t - (x.removedAt || 0) < KEEP_REMOVED).slice(0, 100),
+  });
+  return out.length;
 }
 
 // 復原：放回收藏，之後不再自動移除這一件

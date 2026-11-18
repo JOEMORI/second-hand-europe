@@ -16,6 +16,7 @@
     <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" fill="currentColor"/></symbol>
     <symbol id="i-star-o" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
     <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z M10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/><path d="M4.5 4.5l15 15"/></g></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></g></symbol>
     <symbol id="i-list" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4" y="5" width="4" height="4" rx="1"/><rect x="4" y="15" width="4" height="4" rx="1"/><path d="M11 7h9M11 17h9"/></g></symbol>
     <symbol id="i-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.1 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.1-3.6-8.5s1.2-6.2 3.6-8.5z"/></g></symbol>
@@ -95,6 +96,7 @@
       <h3>搜尋設定</h3>
       <div class="sp-row"><label class="switch"><input type="checkbox" id="strict" checked><span></span>標題須含關鍵字</label></div>
       <div class="sp-row"><label class="switch"><input type="checkbox" id="shipOnly"><span></span>隱藏只能面交</label><button type="button" class="ibtn up" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">Marktplaats、Kleinanzeigen 很多商品只能面交</span></button></div>
+      <div class="sp-row"><label class="switch"><input type="checkbox" id="markSeen" checked><span></span>標記看過的商品</label><button type="button" class="ibtn up" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">點開過的商品照片變淡、標上「看過」，重複搜尋時一眼看出哪些是新的。記住 90 天。</span></button></div>
       <div class="sp-row"><label class="switch"><input type="checkbox" id="usedOnly" checked><span></span>eBay 只看二手</label><button type="button" class="ibtn up" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">分類瀏覽一律只看二手</span></button></div>
       <div class="sp-row">
         <label class="sp-label" for="dealThreshold">便宜標記</label><button type="button" class="ibtn up" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">用這次搜尋結果的中位數價格當行情，低於行情這麼多就標記。搜得越精準（例如 Rolleiflex 2.8F）越準。</span></button>
@@ -103,6 +105,12 @@
           <option value="0.2">低於行情 20%</option>
           <option value="0.3">低於行情 30%</option>
           <option value="0.4">低於行情 40%</option>
+        </select>
+      </div>
+      <div class="sp-row">
+        <label class="sp-label" for="homeCc">運費估算寄到</label><button type="button" class="ibtn up" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">外國平台的商品標出寄到這個國家的大約運費（小包裹、約 2 公斤以內，用郵局寄）。只是估計，不少賣家只寄國內。</span></button>
+        <select id="homeCc">
+          <option value="">不顯示</option>
         </select>
       </div>
       <div class="sp-col">
@@ -117,6 +125,19 @@
         <button type="button" id="exportBtn" class="ghost small">匯出備份</button>
         <button type="button" id="importBtn" class="ghost small">匯入備份</button>
         <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+      <div class="sp-row">
+        <label class="switch"><input type="checkbox" id="autoBackup" checked><span></span>每週自動備份</label><button type="button" class="ibtn up" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">每週存一份備份到「下載」資料夾裡的 SecondHandEurope 資料夾，只留最近 4 份。要還原時按「匯入備份」選那個檔案。</span></button>
+        <span class="sp-gap"></span>
+        <span id="autoBackupInfo" class="sp-note"></span>
+      </div>
+    </div>
+    <div class="sp-sec">
+      <div class="sp-row">
+        <h3>隱藏的商品</h3><button type="button" class="ibtn up" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">滑到商品照片上，按星號旁邊的眼睛圖示就能隱藏，之後搜尋、分類瀏覽和新上架都不會再出現。</span></button>
+        <span class="sp-gap"></span>
+        <span id="hiddenInfo" class="sp-note"></span>
+        <button type="button" id="hiddenClear" class="ghost small">全部恢復</button>
       </div>
     </div>
     <div class="sp-sec">
@@ -308,14 +329,17 @@
             <option value="time">最近加入</option>
             <option value="asc">價格低到高</option>
             <option value="desc">價格高到低</option>
+            <option value="drop">降價幅度</option>
           </select>
           </div>
         </div>
         <div class="fav-tools">
-          <label class="switch"><input type="checkbox" id="favAuto" checked><span></span>自動移除已下架的收藏</label><button type="button" class="ibtn" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">定時檢查收藏的商品：已賣掉或下架的自動移出收藏；降價時跳出通知，卡片上標出原價</span></button>
+          <label class="switch"><input type="checkbox" id="favAuto" checked><span></span>自動檢查收藏</label><button type="button" class="ibtn" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">定時檢查收藏的商品：下架的自動移出收藏；已售出的標成「已售出」、排到最後（成交價可以當行情參考）；降價時跳出通知，卡片上標出原價</span></button>
           <button type="button" id="favCheck" class="ghost small">立即檢查</button>
+          <button type="button" id="favClearSold" class="ghost small" hidden>清除已售出</button>
           <span id="favCheckStatus" class="muted" role="status"></span>
         </div>
+        <div id="favFilter" class="chips fav-filter" role="group" aria-label="篩選收藏" hidden></div>
         <div id="favList" class="favlist"></div>
         <details id="favRemovedBox" class="fav-removed" hidden>
           <summary>最近自動移除（<span id="favRemovedCount">0</span>）</summary>
@@ -348,6 +372,8 @@
           </select>
           <label class="switch" title="通知會一直留在螢幕右上角，直到你按掉"><input type="checkbox" id="notifySticky"><span></span>通知停留到我按掉</label>
           <label class="switch" title="只有關鍵字追蹤會判斷行情；分類追蹤的商品型號混雜，不會判斷"><input type="checkbox" id="notifyDealsOnly"><span></span>只通知低於行情的</label>
+          <span class="quiet" title="這段時間不跳通知，結束後把期間的新上架和降價併成一則彙總。新上架照樣收進「新上架」。"><label class="switch"><input type="checkbox" id="quietOn"><span></span>勿擾時段</label>
+            <select id="quietFrom" aria-label="勿擾開始"></select>–<select id="quietTo" aria-label="勿擾結束"></select></span>
           <button type="button" id="notifyTest" class="ghost small">傳一則測試通知</button>
           <span id="notifyMsg" class="muted" role="status"></span>
           <button type="button" class="ibtn wide right" aria-label="說明"><svg class="ico"><use href="#i-info"/></svg><span class="tip" role="tooltip">每件新商品一則通知：標題是價格和平台，內文是商品名稱，小圖是商品照片（讀不到照片時用插件圖示），點了直接打開商品頁；超過 3 件時其餘併成一則彙總，點彙總打開「新上架」。「只通知低於行情的」只對關鍵字追蹤有效。只要 Chrome 沒有完全結束（視窗縮小或關掉都可以）就會檢查。<br><br>按了測試卻沒看到通知：到 Mac 的「系統設定 → 通知 → Google Chrome」打開「允許通知」，樣式選「提示」，通知就會停在畫面上。</span></button>

@@ -1,6 +1,7 @@
 import { applyFilters, computeDeals, CATEGORIES, SOURCES, fmt, histKey, histRef, addToHist, pruneHist } from './sources.js';
 import { T, tr, i18nReady, getLang, setLang } from './i18n.js';
 import { checkFavorites } from './favcheck.js';
+import { autoBackup } from './backup.js';
 
 const PAGE = 'search.html';
 
@@ -94,7 +95,13 @@ chrome.storage.onChanged.addListener(changes => {
 });
 
 chrome.alarms.onAlarm.addListener(a => {
-  if (a.name === 'check') Promise.resolve(checkWatches()).catch(() => {}).finally(maybeCheckFavs);
+  if (a.name === 'check') {
+    Promise.resolve(checkWatches()).catch(() => {}).finally(async () => {
+      await maybeCheckFavs();
+      // 每週自動備份（到期才存）
+      await autoBackup().catch(e => console.warn('auto backup', e));
+    });
+  }
 });
 
 // 收藏的商品是否已賣掉或下架：追蹤檢查完之後，順便查一下到期的收藏（每件約 10 小時查一次）
@@ -104,6 +111,7 @@ async function maybeCheckFavs() {
     if (!favAutoRemove || Date.now() - favCheckedAt < 3600e3) return;
     const r = await checkFavorites({ limit: 40 });
     if (r?.dropped?.length) await notifyDrops(r.dropped);
+    else await flushQuiet();
   } catch (e) { console.warn('favorites check', e); }
 }
 
@@ -213,8 +221,42 @@ async function runCheck() {
   await chrome.storage.local.set({ watches: latest, newItems: merged });
   await updateBadge(merged.filter(i => !i.viewed).length);
 
+  await flushQuiet();
   await notifyNew(found);
   return { found: found.length };
+}
+
+// ---------- 勿擾時段 ----------
+// 這段時間不跳通知：新上架、降價先記著，時段結束後第一次檢查時併成一則彙總。
+// 新上架照樣收進「新上架」、工具列照樣顯示數字。
+async function quietNow() {
+  const { quietOn = false, quietFrom = 23, quietTo = 8 } = await chrome.storage.local.get(['quietOn', 'quietFrom', 'quietTo']);
+  if (!quietOn || quietFrom === quietTo) return false;
+  const h = new Date().getHours();
+  return quietFrom < quietTo ? h >= quietFrom && h < quietTo : h >= quietFrom || h < quietTo;
+}
+async function holdQuiet(items, drops = 0) {
+  const { quietHeld = { items: [], drops: 0 } } = await chrome.storage.local.get('quietHeld');
+  const light = items.map(it => ({ id: it.id, query: it.query, deal: it.deal?.kind === 'deal' ? 1 : 0 }));
+  await chrome.storage.local.set({ quietHeld: { items: [...quietHeld.items, ...light].slice(-300), drops: (quietHeld.drops || 0) + drops } });
+}
+async function flushQuiet() {
+  const { quietHeld } = await chrome.storage.local.get('quietHeld');
+  if (!quietHeld || (!quietHeld.items?.length && !quietHeld.drops) || await quietNow()) return;
+  await chrome.storage.local.remove('quietHeld');
+  await i18nReady;
+  const { notifyOn = true, notifySticky = false } = await chrome.storage.local.get(['notifyOn', 'notifySticky']);
+  if (!notifyOn) return;
+  const n = quietHeld.items.length, deals = quietHeld.items.filter(i => i.deal).length, d = quietHeld.drops || 0;
+  const parts = [n ? (deals ? T`${n} 件新上架（${deals} 件低於行情）` : T`${n} 件新上架`) : '', d ? T`${d} 件收藏降價` : ''].filter(Boolean);
+  await createNote(`quiet-${Date.now()}`, {
+    type: 'basic',
+    requireInteraction: !!notifySticky,
+    title: T`勿擾時段：${parts.join(getLang() === 'en' ? ', ' : '、')}`,
+    message: n ? countByWatch(quietHeld.items) : T`打開收藏看看`,
+    contextMessage: T`點這裡打開「新上架」`,
+    priority: deals ? 2 : 1,
+  }).catch(e => console.warn('notify', e));
 }
 
 // ---------- 系統通知 ----------
@@ -263,6 +305,7 @@ async function notifyNew(found) {
   let list = [...found].sort((a, b) => (b.deal?.kind === 'deal') - (a.deal?.kind === 'deal') || (b.ts || 0) - (a.ts || 0));
   if (notifyDealsOnly) list = list.filter(i => i.deal?.kind === 'deal');
   if (!list.length) return;
+  if (await quietNow()) { await holdQuiet(list); return; }
   const base = { type: 'basic', requireInteraction: !!notifySticky };
   const stamp = Date.now();
   const each = notifyMode !== 'summary' || list.length === 1;
@@ -301,6 +344,8 @@ async function notifyDrops(list) {
   await i18nReady;
   const { notifyOn = true, notifySticky = false } = await chrome.storage.local.get(['notifyOn', 'notifySticky']);
   if (!notifyOn || !list.length) return;
+  if (await quietNow()) { await holdQuiet([], list.length); return; }
+  await flushQuiet();
   const stamp = Date.now();
   const shown = list.slice(0, MAX_ITEM_NOTES);
   for (let i = shown.length - 1; i >= 0; i--) {

@@ -4,10 +4,11 @@ import {
   searchAll, searchMulti, browseAll, applyFilters, computeDeals, computeBrowseFlags, sortNewest, cmpPrice, fmt,
   LINK_SITES, SOURCES, DEFAULT_SOURCES, CATEGORIES, CATALOG, catGroup, STARTER_CATS, LEGACY_CATS,
   REGIONS, regionOf, countryRank, countryName, catSources, taskSource, catHow, parseWords, checkBids, vintedCond,
-  mergeDupes, histKey, histRef, addToHist, pruneHist, HIST_DAYS,
+  mergeDupes, histKey, histRef, addToHist, pruneHist, HIST_DAYS, eligiblePrice, shipEstimate, SHIP_HOMES,
 } from './sources.js';
 import { T, tr, i18nReady, translateDom, locale, getLang, relTime } from './i18n.js';
-import { checkFavorites, restoreFavorite } from './favcheck.js';
+import { checkFavorites, restoreFavorite, clearSold } from './favcheck.js';
+import { BACKUP_KEYS, autoBackup } from './backup.js';
 
 const $ = id => document.getElementById(id);
 const store = chrome.storage.local;
@@ -29,6 +30,12 @@ const state = {
   customCats: [],       // 使用者自訂的分類
   myCats: [],           // 「我的分類」：分類瀏覽頁上顯示的分類代號（目錄裡的或自訂的）
   gen: 0,
+  seen: new Map(),      // 點過的商品：id → 時間
+  hidden: new Map(),    // 隱藏的商品：id → { t, title, source, url }
+  markSeen: true,       // 標記看過的商品
+  homeCc: 'NL',         // 運費估算寄到哪個國家（空字串：不顯示）
+  favFilter: 'all',     // 收藏頁：全部 / 降價 / 已售出
+  distPrices: [],       // 這次結果的價格（畫價格分布用）
 };
 
 // ---------- 小工具 ----------
@@ -248,7 +255,7 @@ async function runSearch(override, { stay = false } = {}) {
 function applySearchFilters() {
   if (!state.query) return;
   const v = { ...state.query.v, ...formFiltersNow() };
-  state.items = applyFilters(state.rawItems, v);
+  state.items = applyFilters(state.rawItems, v).filter(i => !state.hidden.has(i.id));
   renderResults();
 }
 
@@ -392,6 +399,7 @@ function renderStatus() {
             T`行情中位數 ${eurRound(state.deals.median)}（累積 ${state.deals.n} 件）`)
           : el('span', { class: 'market first', title: T`根據 ${state.deals.n} 件有標價、非拍賣、非故障的商品計算，有運費或手續費資料的用總價` },
             T`行情中位數 ${eurRound(state.deals.median)}`),
+        priceDist(state.distPrices, state.deals.median),
         el('button', {
           type: 'button',
           class: 'chip deal-toggle' + (state.onlyDeals ? ' active' : ''),
@@ -405,6 +413,37 @@ function renderStatus() {
   }
   extra.hidden = !extra.childNodes.length;
   renderErrors(state.progress, $('statusErr'));
+}
+
+// 價格分布小圖：這次結果的價格分成 14 格（去掉最便宜、最貴各 5%），直線是行情中位數
+function priceDist(prices, med) {
+  if (prices.length < 8) return null;
+  const s = [...prices].sort((a, b) => a - b);
+  const q = f => s[Math.min(s.length - 1, Math.max(0, Math.round(f * (s.length - 1))))];
+  const lo = q(0.05), hi = q(0.95);
+  if (!(hi > lo)) return null;
+  const N = 14, W = 112, H = 22, bw = W / N;
+  const bins = Array(N).fill(0);
+  for (const p of s) if (p >= lo && p <= hi) bins[Math.min(N - 1, Math.floor((p - lo) / (hi - lo) * N))]++;
+  const top = Math.max(...bins);
+  const NS = 'http://www.w3.org/2000/svg';
+  const mk = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; };
+  const svg = mk('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, class: 'dist-svg', 'aria-hidden': 'true' });
+  bins.forEach((n, i) => {
+    if (!n) return;
+    const h = Math.max(2, Math.round(n / top * (H - 2)));
+    const r = mk('rect', { x: (i * bw + 0.5).toFixed(1), y: H - h, width: (bw - 1).toFixed(1), height: h, rx: 1 });
+    const a = lo + (hi - lo) * i / N, b = lo + (hi - lo) * (i + 1) / N;
+    r.append(mk('title', {}));
+    r.firstChild.textContent = T`${eurRound(a)}–${eurRound(b)}：${n} 件`;
+    svg.append(r);
+  });
+  if (med > 0) {
+    const x = Math.min(W - 1, Math.max(1, (med - lo) / (hi - lo) * W));
+    svg.append(mk('line', { x1: x, x2: x, y1: 0, y2: H, class: 'dist-med' }));
+  }
+  return el('span', { class: 'dist', title: T`這次結果的價格分布（不含最便宜、最貴各 5%）；直線是行情中位數` },
+    el('small', {}, eurRound(lo)), svg, el('small', {}, eurRound(hi)));
 }
 
 function sortItems(items, mode, flags = {}) {
@@ -432,6 +471,7 @@ function renderResults() {
   state.deals = state.naive
     ? { median: null, n: 0, flags: computeBrowseFlags(merged).flags }
     : computeDeals(merged, state.threshold, state.hist);
+  state.distPrices = merged.map(eligiblePrice).filter(p => p != null);
   renderStatus();
   let items = sortItems(merged, $('sort').value, state.deals.flags);
   if (state.onlySource) items = items.filter(i => fromSource(i, state.onlySource));
@@ -457,12 +497,73 @@ function srcTag(it) {
     ...more.map(a => [el('span', { class: 'tag-plus' }, '+'), el('i', { style: `background:${colorOf(a.source)}` }), a.source]));
 }
 
-// 收藏降價：劃掉的原價和「降價 x%」
+// 收藏降價：劃掉的原價和「降價 x%」（已售出的不標）
 function dropEls(it) {
-  if (!(it.priceWas > it.price)) return null;
+  if (!(it.priceWas > it.price) || it.soldAt) return null;
   const pct = Math.round((1 - it.price / it.priceWas) * 100);
   return [el('s', { class: 'was', title: T`原本的價格` }, eurRound(it.priceWas)), el('span', { class: 'badge-drop' }, T`降價 ${pct}%`)];
 }
+
+// ---------- 看過的商品：點過的卡片變淡、標上「看過」（記住 90 天、最多 5000 件） ----------
+const SEEN_DAYS = 90, SEEN_MAX = 5000;
+async function markSeen(it, node) {
+  if (!state.markSeen) return;
+  const t = Date.now();
+  const ids = [it.id, ...(it.alsoOn || []).map(a => a.id)].filter(id => !state.seen.has(id));
+  if (!ids.length) return;
+  ids.forEach(id => state.seen.set(id, t));
+  node?.classList.add('seen');
+  const { seenIds = {} } = await store.get('seenIds');
+  for (const id of ids) seenIds[id] = t;
+  const kept = Object.entries(seenIds).filter(([, v]) => t - v < SEEN_DAYS * 86400e3).sort((a, b) => b[1] - a[1]).slice(0, SEEN_MAX);
+  await store.set({ seenIds: Object.fromEntries(kept) });
+}
+
+// ---------- 隱藏商品：之後搜尋、分類瀏覽、新上架都不再出現（最多記 2000 件） ----------
+async function hideItem(it, node) {
+  const t = Date.now();
+  const ids = [it.id, ...(it.alsoOn || []).map(a => a.id)];
+  const { hiddenItems = {} } = await store.get('hiddenItems');
+  for (const id of ids) hiddenItems[id] = { t, title: it.title, source: it.source, url: it.url };
+  const kept = Object.fromEntries(Object.entries(hiddenItems).sort((a, b) => b[1].t - a[1].t).slice(0, 2000));
+  ids.forEach(id => state.hidden.set(id, kept[id]));
+  await store.set({ hiddenItems: kept });
+  node?.remove();
+  const short = it.title.length > 36 ? it.title.slice(0, 35) + '…' : it.title;
+  toast(T`已隱藏「${short}」`, T`復原`, () => unhide(ids));
+}
+async function unhide(ids) {
+  const { hiddenItems = {} } = await store.get('hiddenItems');
+  for (const id of ids || Object.keys(hiddenItems)) { delete hiddenItems[id]; state.hidden.delete(id); }
+  await store.set({ hiddenItems: ids ? hiddenItems : {} });
+  refreshLists();
+}
+// 隱藏 / 恢復之後重畫各個清單
+function refreshLists() {
+  if (state.query) applySearchFilters();
+  if (bState.cat) renderBrowse();
+  renderNew(false);
+}
+
+// 畫面下方的小提示，可以帶一個按鈕（例如「復原」），6 秒後自動消失
+function toast(msg, actionLabel, onAction) {
+  let box = $('toast');
+  if (!box) { box = el('div', { id: 'toast', role: 'status' }); document.body.append(box); }
+  clearTimeout(toast.timer);
+  box.replaceChildren(el('span', {}, msg),
+    actionLabel ? el('button', { type: 'button', onclick: () => { box.classList.remove('show'); onAction(); } }, actionLabel) : null);
+  box.classList.add('show');
+  toast.timer = setTimeout(() => box.classList.remove('show'), 6000);
+}
+
+// ---------- 運費估算：外國平台的商品，寄一個小包裹到你設定的國家大約多少 ----------
+function shipEst(it) {
+  if (!state.homeCc || it.total != null || it.shipping === 'no' || it.soldAt) return null;
+  const s = srcByName(it.source);
+  const n = s && !s.multi && s.cc !== 'EU' ? shipEstimate(s.cc, state.homeCc) : null;
+  return n ? T`寄到${countryName(state.homeCc)}約 € ${n}（估）` : null;
+}
+const SHIP_TIP = () => T`用郵局寄一個小包裹（約 2 公斤以內，例如一台相機）的大約運費，實際看賣家和包裹大小；不少賣家只寄國內，要先問。`;
 
 function card(it, opts = {}) {
   const fav = state.favIds.has(it.id);
@@ -475,17 +576,27 @@ function card(it, opts = {}) {
 
   const flag = opts.flag || it.deal;
   let badge = null;
-  if (flag?.kind === 'deal') badge = el('span', { class: 'badge-deal', title: T`比這次搜尋結果的中位數價格便宜` }, T`低於行情 ${flag.pct}%`);
+  if (it.soldAt) badge = el('span', { class: 'badge-sold', title: T`網站上已經賣掉了` }, T`已售出`);
+  else if (flag?.kind === 'deal') badge = el('span', { class: 'badge-deal', title: T`比這次搜尋結果的中位數價格便宜` }, T`低於行情 ${flag.pct}%`);
   else if (flag?.kind === 'naive') badge = el('span', { class: 'badge-naive', title: T`標題用了「${flag.word}」這類不懂行情的賣家常用的字` }, T`素人用語`);
   else if (flag?.kind === 'nobrand') badge = el('span', { class: 'badge-soft', title: T`標題沒寫品牌，可能是賣家不清楚自己在賣什麼，值得點進去看照片` }, T`未寫品牌`);
   else if (flag?.kind === 'odd') badge = el('span', { class: 'badge-muted', title: T`比行情便宜太多，多半是配件或說明書` }, T`異常低價`);
   else if (flag?.kind === 'parts') badge = el('span', { class: 'badge-muted', title: T`標題提到故障或零件` }, T`故障 / 零件`);
 
   const meta = [it.source === 'Vinted' ? vintedCond(it.location) : it.location, it.dateLabel].filter(Boolean).join(' · ');
-  const node = el('a', { class: 'card' + (flag?.kind === 'deal' ? ' is-deal' : ''), href: it.url, target: '_blank', rel: 'noopener' },
+  const ship = shipEst(it);
+  const seen = !opts.fav && state.markSeen && state.seen.has(it.id);
+  const cls = ['card', flag?.kind === 'deal' && !it.soldAt ? 'is-deal' : '', it.soldAt ? 'is-sold' : '', seen ? 'seen' : ''].filter(Boolean).join(' ');
+  const hide = opts.fav ? null : el('button', {
+    type: 'button', class: 'hide-btn', title: T`隱藏這件商品`, 'aria-label': T`隱藏這件商品`,
+    onclick: e => { e.preventDefault(); e.stopPropagation(); hideItem(it, node); },
+  }, icon('eye-off'));
+  const node = el('a', { class: cls, href: it.url, target: '_blank', rel: 'noopener' },
     el('div', { class: 'img' },
       it.image ? el('img', { src: it.image, loading: 'lazy', alt: '', referrerpolicy: 'no-referrer' }) : null,
       srcTag(it),
+      opts.fav ? null : el('span', { class: 'seen-tag' }, T`看過`),
+      hide,
       star,
     ),
     el('div', { class: 'body' },
@@ -493,6 +604,7 @@ function card(it, opts = {}) {
       el('div', { class: 'price-row' }, el('span', { class: 'price' }, it.priceLabel), dropEls(it), badge),
       it.total != null ? el('div', { class: 'total', title: it.totalNote || '' }, T`總價約 € ${fmt(it.total)}`) : null,
       it.localLabel ? el('div', { class: 'total', title: T`依歐洲央行匯率換算` }, T`當地價格 ${it.localLabel}`) : null,
+      ship ? el('div', { class: 'ship-est', title: SHIP_TIP() }, ship) : null,
       el('div', { class: 'title' }, it.title),
       // 列表模式才顯示：平台名稱和標示放在文字列
       el('div', { class: 'list-tags' },
@@ -514,9 +626,13 @@ function card(it, opts = {}) {
       el('b', {}, it.priceLabel),
       it.priceWas > it.price ? el('small', { class: 'was-line' }, T`原價 ${eurRound(it.priceWas)}`) : null,
       it.total != null ? el('small', { title: it.totalNote || '' }, T`總價約 € ${fmt(it.total)}`) : null,
-      it.localLabel ? el('small', {}, T`當地價格 ${it.localLabel}`) : null),
+      it.localLabel ? el('small', {}, T`當地價格 ${it.localLabel}`) : null,
+      ship ? el('small', { class: 'ship-est', title: SHIP_TIP() }, ship) : null),
     listDate(it),
   );
+  // 點開（包括按滑鼠中鍵開新分頁）就記成看過
+  node.addEventListener('click', () => markSeen(it, node));
+  node.addEventListener('auxclick', e => { if (e.button === 1) markSeen(it, node); });
   cardData.set(node, { it, badge });
   return node;
 }
@@ -647,20 +763,44 @@ async function toggleFav(it) {
   if (!$('tab-favs').hidden) renderFavs();
 }
 
+const dropPct = f => (f.priceWas > f.price && !f.soldAt ? 1 - f.price / f.priceWas : 0);
+const FAV_FILTERS = { all: () => true, drop: f => dropPct(f) > 0, sold: f => !!f.soldAt };
+
+// 收藏頁上方的篩選：全部 / 降價 / 已售出（有降價或已售出的收藏才顯示）
+function renderFavFilter(all) {
+  const n = k => all.filter(FAV_FILTERS[k]).length;
+  const counts = { all: all.length, drop: n('drop'), sold: n('sold') };
+  if (!counts[state.favFilter]) state.favFilter = 'all';
+  const box = $('favFilter');
+  box.hidden = !counts.drop && !counts.sold;
+  const labels = { all: T`全部`, drop: T`降價`, sold: T`已售出` };
+  box.replaceChildren(...['all', 'drop', 'sold'].filter(k => k === 'all' || counts[k]).map(k => el('button', {
+    type: 'button', class: 'chip' + (state.favFilter === k ? ' active' : ''), 'aria-pressed': String(state.favFilter === k),
+    onclick: () => { state.favFilter = k; renderFavs(); },
+  }, labels[k], el('b', {}, String(counts[k])))));
+  $('favClearSold').hidden = !counts.sold;
+  $('favClearSold').textContent = T`清除已售出（${counts.sold}）`;
+}
+
 async function renderFavs() {
-  let favs = await loadFavs();
+  const all = await loadFavs();
+  renderFavFilter(all);
+  let favs = all.filter(FAV_FILTERS[state.favFilter]);
   const mode = $('favSort').value;
-  if (mode !== 'time') {
+  if (mode === 'drop') favs = [...favs].sort((a, b) => dropPct(b) - dropPct(a));
+  else if (mode !== 'time') {
     const dir = mode === 'asc' ? 1 : -1;
     favs = [...favs].sort((a, b) => cmpPrice(a) == null ? 1 : cmpPrice(b) == null ? -1 : (cmpPrice(a) - cmpPrice(b)) * dir);
   }
+  // 已售出的排最後
+  favs = [...favs.filter(f => !f.soldAt), ...favs.filter(f => f.soldAt)];
   const list = $('favList');
   renderRemoved();
   // 格狀：用跟搜尋結果一樣的卡片；列表：每件一列，可以直接寫備註
   const gridView = state.favView === 'grid' && favs.length;
   list.className = gridView ? 'grid favgrid' : 'favlist';
   if (gridView) {
-    list.replaceChildren(...favs.map(f => card(f, { note: f.note })));
+    list.replaceChildren(...favs.map(f => card(f, { note: f.note, fav: true })));
     return;
   }
   if (!favs.length) {
@@ -681,16 +821,20 @@ async function renderFavs() {
       },
     });
     note.value = f.note || '';
-    return el('div', { class: 'fav' },
+    const ship = shipEst(f);
+    return el('div', { class: 'fav' + (f.soldAt ? ' sold' : '') },
       el('a', { class: 'thumb', href: f.url, target: '_blank', rel: 'noopener' }, f.image ? el('img', { src: f.image, alt: '', referrerpolicy: 'no-referrer' }) : null),
       el('div', { class: 'info' },
         el('div', { class: 'head' },
           el('span', { class: 'tag inline', style: `--c:${colorOf(f.source)}` }, f.source),
           el('a', { class: 'title', href: f.url, target: '_blank', rel: 'noopener' }, f.title),
         ),
-        el('div', { class: 'price' }, f.priceLabel, dropEls(f), f.total != null ? el('span', { class: 'total inline' }, T`總價約 € ${fmt(f.total)}`) : null,
-          f.localLabel ? el('span', { class: 'total inline' }, T`當地價格 ${f.localLabel}`) : null),
-        el('div', { class: 'meta' }, [f.location, f.extra, T`收藏於 ${new Date(f.savedAt).toLocaleDateString(locale())}`].filter(Boolean).join(' · ')),
+        el('div', { class: 'price' }, f.priceLabel, f.soldAt ? el('span', { class: 'badge-sold' }, T`已售出`) : null, dropEls(f),
+          f.total != null ? el('span', { class: 'total inline' }, T`總價約 € ${fmt(f.total)}`) : null,
+          f.localLabel ? el('span', { class: 'total inline' }, T`當地價格 ${f.localLabel}`) : null,
+          ship ? el('span', { class: 'total inline ship-est', title: SHIP_TIP() }, ship) : null),
+        el('div', { class: 'meta' }, [f.location, f.extra, T`收藏於 ${new Date(f.savedAt).toLocaleDateString(locale())}`,
+          f.soldAt ? T`${new Date(f.soldAt).toLocaleDateString(locale())} 發現已售出` : ''].filter(Boolean).join(' · ')),
         note,
       ),
       el('button', { type: 'button', class: 'ghost small icon-only', title: T`移除收藏`, onclick: () => toggleFav(f) }, icon('x')),
@@ -698,6 +842,11 @@ async function renderFavs() {
   }));
 }
 $('favSort').addEventListener('change', renderFavs);
+$('favClearSold').addEventListener('click', async () => {
+  const n = await clearSold();
+  renderFavs();
+  if (n) $('favCheckStatus').textContent = T`已清除 ${n} 件已售出的收藏，30 天內可以在「最近自動移除」放回`;
+});
 
 // ---------- 收藏：自動移除已下架的商品 ----------
 async function renderRemoved() {
@@ -732,16 +881,21 @@ async function runFavCheck(force) {
       onProgress: (i, n) => { status.textContent = T`正在檢查收藏是否還在… ${i}/${n}`; } });
     if (r.busy) status.textContent = T`背景正在檢查，稍後再看`;
     else if (!r.checked) status.textContent = force ? T`沒有需要檢查的收藏` : '';
-    else if (r.removed.length) status.textContent = T`檢查了 ${r.checked} 件，移除 ${r.removed.length} 件已下架的商品`;
-    else status.textContent = T`檢查了 ${r.checked} 件，都還在`;
-    if (r?.dropped?.length) status.textContent += T`，${r.dropped.length} 件降價`;
+    else {
+      const parts = [
+        r.removed.length ? T`移除 ${r.removed.length} 件已下架的商品` : '',
+        r.sold?.length ? T`${r.sold.length} 件已售出` : '',
+        r.dropped?.length ? T`${r.dropped.length} 件降價` : '',
+      ].filter(Boolean);
+      status.textContent = parts.length ? T`檢查了 ${r.checked} 件：${parts.join(getLang() === 'en' ? ', ' : '、')}` : T`檢查了 ${r.checked} 件，都還在`;
+    }
   } catch (e) {
     status.textContent = T`檢查失敗：${e?.message || e}`;
   } finally {
     favChecking = false;
     btn.disabled = false;
     // 有移除才重畫，避免正在寫的備註被打斷
-    if (r?.removed?.length || r?.dropped?.length) renderFavs(); else renderRemoved();
+    if (r?.removed?.length || r?.dropped?.length || r?.sold?.length) renderFavs(); else renderRemoved();
   }
 }
 $('favCheck').addEventListener('click', () => runFavCheck(true));
@@ -1167,7 +1321,7 @@ function browseFiltered() {
 }
 
 function browseItems() {
-  const all = mergeDupes(browseFiltered());
+  const all = mergeDupes(browseFiltered().filter(i => !state.hidden.has(i.id)));
   // 標示以「所有平台、目前篩選後」的結果計算
   bState.flags = computeBrowseFlags(all).flags;
   let items = all;
@@ -1490,7 +1644,8 @@ $('checkNow').addEventListener('click', async () => {
 
 // ---------- 新上架 ----------
 async function renderNew(markViewed) {
-  const { newItems = [] } = await store.get('newItems');
+  const { newItems: stored = [] } = await store.get('newItems');
+  const newItems = stored.filter(i => !state.hidden.has(i.id));
   const unseen = newItems.filter(i => !i.viewed).length;
   $('newCount').textContent = unseen || '';
   if (!newItems.length) {
@@ -1500,7 +1655,7 @@ async function renderNew(markViewed) {
   }
   renderHome(newItems, unseen);
   if (markViewed && unseen) {
-    await store.set({ newItems: newItems.map(i => ({ ...i, viewed: true })) });
+    await store.set({ newItems: stored.map(i => ({ ...i, viewed: true })) });
     chrome.action.setBadgeText({ text: '' });
   }
 }
@@ -1521,10 +1676,12 @@ chrome.storage.onChanged.addListener(c => {
     state.myCats = (c.myCats.newValue || []).filter(k => findCat(k));
     if (bState.cat && !findCat(bState.cat)) resetBrowse(); else renderCats();
   }
+  if (c.seenIds) state.seen = new Map(Object.entries(c.seenIds.newValue || {}));
+  if (c.hiddenItems) state.hidden = new Map(Object.entries(c.hiddenItems.newValue || {}));
   if (c.favorites) {
     loadFavs();
-    // 背景自動移除了商品：重畫收藏清單（只改備註時不重畫，避免打字打到一半被打斷）
-    const ids = v => (v || []).map(f => f.id).join();
+    // 背景自動移除了商品、標了已售出或降價：重畫收藏清單（只改備註時不重畫，避免打字打到一半被打斷）
+    const ids = v => (v || []).map(f => f.id + (f.soldAt ? '/s' : '') + (f.priceWas ? '/' + f.price : '')).join();
     if (!$('tab-favs').hidden && !favChecking && ids(c.favorites.newValue) !== ids(c.favorites.oldValue)) renderFavs();
   }
   if (c.favRemoved && !$('tab-favs').hidden) renderRemoved();
@@ -1537,6 +1694,7 @@ function setHome(on) {
 async function renderHome(newItems, unseen) {
   if (!newItems) {
     ({ newItems = [] } = await store.get('newItems'));
+    newItems = newItems.filter(i => !state.hidden.has(i.id));
     unseen = newItems.filter(i => !i.viewed).length;
   }
   $('homeCount').textContent = unseen || '';
@@ -1583,7 +1741,55 @@ async function renderHistInfo() {
   $('histClear').textContent = T`清除`;
   delete $('histClear').dataset.armed;
 }
-$('settingsBtn').addEventListener('click', () => { if (!$('settingsPanel').hidden) renderHistInfo(); });
+$('settingsBtn').addEventListener('click', () => { if (!$('settingsPanel').hidden) { renderHistInfo(); renderHiddenInfo(); renderBackupInfo(); } });
+
+// 標記看過的商品
+$('markSeen').addEventListener('change', () => {
+  state.markSeen = $('markSeen').checked;
+  store.set({ markSeen: state.markSeen });
+  refreshLists();
+});
+
+// 運費估算寄到哪個國家
+// （國家名稱要等語言設定讀好才知道用哪種語言，初始化時才填）
+function fillHomeCc() {
+  $('homeCc').append(...SHIP_HOMES.map(cc => el('option', { value: cc }, countryName(cc)))
+    .sort((a, b) => a.textContent.localeCompare(b.textContent, locale())));
+}
+$('homeCc').addEventListener('change', () => {
+  state.homeCc = $('homeCc').value;
+  store.set({ homeCc: state.homeCc });
+  refreshLists();
+  if (!$('tab-favs').hidden) renderFavs();
+});
+
+// 隱藏的商品：顯示件數，按兩次全部恢復
+function renderHiddenInfo() {
+  const n = state.hidden.size;
+  $('hiddenInfo').textContent = n ? T`${n} 件` : T`沒有`;
+  $('hiddenClear').disabled = !n;
+  $('hiddenClear').textContent = T`全部恢復`;
+  delete $('hiddenClear').dataset.armed;
+}
+$('hiddenClear').addEventListener('click', async () => {
+  const btn = $('hiddenClear');
+  if (!btn.dataset.armed) { btn.dataset.armed = '1'; btn.textContent = T`再按一次恢復`; return; }
+  await unhide(null);
+  renderHiddenInfo();
+});
+
+// 自動備份：每週存一份到「下載」資料夾
+async function renderBackupInfo() {
+  const { autoBackup: on = true, autoBackupAt = 0 } = await store.get(['autoBackup', 'autoBackupAt']);
+  $('autoBackup').checked = on;
+  $('autoBackupInfo').textContent = autoBackupAt ? T`上次 ${new Date(autoBackupAt).toLocaleDateString(locale())}` : '';
+}
+$('autoBackup').addEventListener('change', async () => {
+  await store.set({ autoBackup: $('autoBackup').checked });
+  // 剛打開、又超過一週沒備份：馬上存一份
+  if ($('autoBackup').checked) await autoBackup().catch(e => console.warn('auto backup', e));
+  renderBackupInfo();
+});
 $('histClear').addEventListener('click', async () => {
   const btn = $('histClear');
   if (!btn.dataset.armed) { btn.dataset.armed = '1'; btn.textContent = T`再按一次清除`; return; }
@@ -1607,7 +1813,6 @@ document.addEventListener('click', e => {
 }, true);
 
 // ---------- 備份 ----------
-const BACKUP_KEYS = ['favorites', 'watches', 'quick', 'customCats', 'myCats', 'selectedSources', 'dealThreshold', 'interval', 'lang', 'usedOnly', 'shipOnly', 'newItems', 'favRemoved', 'favAutoRemove', 'notifyOn', 'notifySticky', 'notifyMode', 'notifyDealsOnly', 'viewMode', 'favView'];
 
 $('exportBtn').addEventListener('click', async () => {
   const data = await store.get(BACKUP_KEYS);
@@ -1653,6 +1858,11 @@ $('importFile').addEventListener('change', async e => {
     if (data.lang === 'zh' || data.lang === 'en') clean.lang = data.lang;
     if (typeof data.usedOnly === 'boolean') clean.usedOnly = data.usedOnly;
     if (typeof data.shipOnly === 'boolean') clean.shipOnly = data.shipOnly;
+    if (isObj(data.hiddenItems)) clean.hiddenItems = Object.fromEntries(Object.entries(data.hiddenItems).filter(([, v]) => isObj(v) && typeof v.t === 'number').slice(0, 2000));
+    if (typeof data.markSeen === 'boolean') clean.markSeen = data.markSeen;
+    if (data.homeCc === '' || SHIP_HOMES.includes(data.homeCc)) clean.homeCc = data.homeCc;
+    for (const k of ['quietOn', 'autoBackup']) if (typeof data[k] === 'boolean') clean[k] = data[k];
+    for (const k of ['quietFrom', 'quietTo']) if (Number.isInteger(data[k]) && data[k] >= 0 && data[k] <= 23) clean[k] = data[k];
     const n = clean.favorites.length, w = clean.watches.length, q = clean.quick.length;
     const c = clean.customCats.length;
     if (!confirm(T`要匯入備份嗎？目前的收藏、追蹤、快捷和自訂分類會被取代。\n備份內容：${n} 件收藏、${w} 個追蹤、${q} 個快捷、${c} 個自訂分類`)) return;
@@ -1662,6 +1872,23 @@ $('importFile').addEventListener('change', async e => {
     flash($('importBtn'), T`檔案格式不對`);
   }
 });
+
+// ---------- 勿擾時段：這段時間不跳通知，結束後併成一則彙總 ----------
+for (const id of ['quietFrom', 'quietTo']) {
+  $(id).append(...Array.from({ length: 24 }, (_, h) => el('option', { value: h }, String(h).padStart(2, '0') + ':00')));
+}
+async function loadQuiet() {
+  const { quietOn = false, quietFrom = 23, quietTo = 8 } = await store.get(['quietOn', 'quietFrom', 'quietTo']);
+  $('quietOn').checked = quietOn;
+  $('quietFrom').value = quietFrom;
+  $('quietTo').value = quietTo;
+  $('quietFrom').disabled = $('quietTo').disabled = !quietOn;
+}
+['quietOn', 'quietFrom', 'quietTo'].forEach(id => $(id).addEventListener('change', async () => {
+  await store.set({ quietOn: $('quietOn').checked, quietFrom: Number($('quietFrom').value), quietTo: Number($('quietTo').value) });
+  loadQuiet();
+}));
+loadQuiet();
 
 // ---------- 語言 ----------
 $('langSel').addEventListener('change', async e => {
@@ -1676,6 +1903,16 @@ $('langSel').addEventListener('change', async e => {
   document.documentElement.classList.remove('i18n-pending');
   $('langSel').value = getLang();
   const { selectedSources, dealThreshold, usedOnly, shipOnly, viewMode, favView, customCats } = await store.get(['selectedSources', 'dealThreshold', 'usedOnly', 'shipOnly', 'viewMode', 'favView', 'customCats']);
+  {
+    const { seenIds = {}, hiddenItems = {}, markSeen = true, homeCc = 'NL' } = await store.get(['seenIds', 'hiddenItems', 'markSeen', 'homeCc']);
+    state.seen = new Map(Object.entries(seenIds));
+    state.hidden = new Map(Object.entries(hiddenItems));
+    state.markSeen = markSeen;
+    state.homeCc = homeCc === '' || SHIP_HOMES.includes(homeCc) ? homeCc : 'NL';
+    $('markSeen').checked = markSeen;
+    fillHomeCc();
+    $('homeCc').value = state.homeCc;
+  }
   if (Array.isArray(customCats)) state.customCats = customCats.filter(c => c?.key && c.name && Array.isArray(c.words) && c.words.length).map(c => ({ ...c, custom: true }));
   // 我的分類。v1.5 以前沒有這個設定：用過插件的人保留原本看到的分類，第一次用的人給幾個不同領域的範例
   {

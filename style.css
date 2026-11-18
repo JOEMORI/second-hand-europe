@@ -781,3 +781,64 @@ body.is-home #quickList { justify-content: center; }
   .badge-drop { background: #1d3a27; color: #8fd6a6; }
   .grid.list .lc-price .was-line { color: #8fd6a6; }
 }
+
+/* ============================================================
+   v1.5.5：已售出、看過、隱藏、收藏篩選、價格分布、運費估算
+   ============================================================ */
+.badge-sold { font-size: 10.5px; font-weight: 700; line-height: 17px; padding: 0 8px; border-radius: 999px; background: #3a3835; color: #eee; white-space: nowrap; }
+.card.is-sold .img img { filter: grayscale(1); opacity: .6; }
+.card.is-sold .price { color: var(--faint); }
+.fav.sold { opacity: .75; }
+.fav.sold .thumb img { filter: grayscale(1); }
+.fav .price .badge-sold { margin-left: 8px; vertical-align: 2px; }
+.fav-filter { margin: -4px 0 14px; }
+.fav-filter .chip { --c: var(--text); }
+
+.seen-tag {
+  display: none; position: absolute; left: 7px; bottom: 7px; font-size: 10.5px; font-weight: 650; line-height: 18px;
+  padding: 0 7px; border-radius: 999px; background: rgba(28,27,25,.62); color: #fff; pointer-events: none;
+}
+.card.seen .seen-tag { display: block; }
+.card.seen .img img { opacity: .5; }
+.card.seen .title { color: var(--muted); }
+.grid.list .card .seen-tag { display: none; }
+
+.hide-btn {
+  position: absolute; top: 7px; right: 43px; width: 30px; height: 30px; border-radius: 50%;
+  border: 0; background: rgba(255,255,255,.92); color: #6b6862; display: grid; place-items: center; cursor: pointer;
+  opacity: 0; transform: scale(.9); transition: opacity .15s, transform .15s; box-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+.hide-btn .ico { width: 16px; height: 16px; }
+.card:hover .hide-btn, .hide-btn:focus-visible { opacity: 1; transform: scale(1); }
+.hide-btn:hover { color: #1c1b19; transform: scale(1.1); }
+.grid.list .card .hide-btn { width: 26px; height: 26px; top: 5px; right: 35px; }
+.grid.list .card .hide-btn .ico { width: 14px; height: 14px; }
+
+.ship-est { font-size: 12px; color: var(--muted); }
+.grid.list .lc-price .ship-est { color: var(--muted); }
+
+.dist { display: inline-flex; align-items: center; gap: 5px; }
+.dist small { font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.dist-svg { display: block; overflow: visible; }
+.dist-svg rect { fill: color-mix(in srgb, var(--text) 22%, transparent); }
+.dist-svg rect:hover { fill: color-mix(in srgb, var(--text) 45%, transparent); }
+.dist-svg .dist-med { stroke: var(--accent); stroke-width: 1.5; }
+
+.quiet { display: inline-flex; align-items: center; gap: 6px; }
+.quiet select { font-size: 13px; padding-top: 3px; padding-bottom: 3px; }
+
+#toast {
+  position: fixed; left: 50%; bottom: 24px; z-index: 80; transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
+  display: flex; align-items: center; gap: 14px; max-width: min(560px, calc(100vw - 32px));
+  background: #2a2926; color: #f3f1ec; border-radius: 10px; padding: 10px 12px 10px 16px; font-size: 13px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.22); transition: opacity .18s, transform .18s;
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+#toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#toast button { border: 0; background: none; color: #ffb48f; font-weight: 650; font-size: 13px; cursor: pointer; padding: 4px 6px; white-space: nowrap; }
+@media (max-height: 760px) { .settings-pop { max-height: calc(100vh - 32px); overflow-y: auto; } }
+@media (prefers-color-scheme: dark) {
+  .hide-btn { background: rgba(40,39,36,.92); color: #c9c5bd; }
+  .hide-btn:hover { color: #fff; }
+  .badge-sold { background: #4a4844; }
+}

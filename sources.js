@@ -1209,6 +1209,24 @@ export function histRef(entry) {
   return robustMedian(Object.values(entry.items).filter(v => v[1] > cut).map(v => v[0]));
 }
 
+// ---------- 運費估算 ----------
+// 從外國寄一個小包裹（約 2 公斤以內，例如一台相機）到收件國家的大約運費（歐元）。
+// 用兩國的大概位置估距離分三級，數字參考各國郵局寄歐盟小包裹的價格；只是估計，實際看賣家和包裹大小
+const SHIP_POS = {
+  NL: [52.1, 5.3], BE: [50.6, 4.6], LU: [49.8, 6.1], DE: [51.2, 10.4], FR: [46.6, 2.4], AT: [47.6, 14.1],
+  DK: [56, 10], SE: [59.3, 15], FI: [61.5, 25], PL: [52, 19.4], CZ: [49.8, 15.5], SK: [48.7, 19.7],
+  HU: [47.2, 19.5], IT: [42.8, 12.5], ES: [40.2, -3.6], PT: [39.6, -8.2], RO: [45.9, 24.9], BG: [42.7, 25.5],
+};
+export const SHIP_HOMES = Object.keys(SHIP_POS);
+export function shipEstimate(from, to) {
+  const a = SHIP_POS[from], b = SHIP_POS[to];
+  if (!a || !b || from === to) return null;
+  const rad = x => x * Math.PI / 180;
+  const h = Math.sin(rad(b[0] - a[0]) / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(rad(b[1] - a[1]) / 2) ** 2;
+  const km = 12742 * Math.asin(Math.sqrt(h));
+  return km < 700 ? 15 : km < 1500 ? 20 : 25;
+}
+
 // ---------- 合併重複刊登 ----------
 // 同一個賣家常把同一件商品同時刊在兩個平台（例如 Marktplaats 和 2dehands，兩邊的商品編號不同）。
 // 不同平台、標題相同（不分大小寫、標點、重音）、價格也完全相同的，合併成一張卡片，
