@@ -1,10 +1,12 @@
-SECOND HAND EUROPE  v1.5.4  -  HOW TO UPDATE & WHAT'S NEW
+SECOND HAND EUROPE  v1.5.5  -  HOW TO UPDATE & WHAT'S NEW
 ==========================================================
 Second Hand Europe (formerly Gear Search) searches second-hand
 marketplaces across Europe in one go.
 (中文說明在下面)
 
-New in v1.5.4: price-drop alerts, merged duplicate listings, price history.
+New in v1.5.5: sold saved items are marked instead of staying "for sale",
+"Seen" marks, hiding listings, quiet hours, shipping estimates, weekly backup.
+Then: what v1.5.4 added (price-drop alerts, merged listings, price history).
 Part 0: what changed from v1.5.1 to v1.5.3 (small clean-up).
 Part 1: what changed from v1.5 to v1.5.1 (a cleaner interface).
 Part 2: what changed from v1.4 to v1.5.
@@ -27,7 +29,7 @@ extension from. Keep using the SAME folder and nothing is lost.
    when asked.
 4. Go to  chrome://extensions  and click the round reload arrow on
    the extension (now called Second Hand Europe).
-5. Open it again. chrome://extensions should show version 1.5.4.
+5. Open it again. chrome://extensions should show version 1.5.5.
 
 Do NOT click "Remove" and load a new folder: Chrome treats that as a
 new extension and your saved items and watches would be gone.
@@ -37,8 +39,40 @@ just in case.
 
 
 
-WHAT'S NEW IN v1.5.4
+WHAT'S NEW IN v1.5.5
 --------------------
+- Sold saved items: when a saved listing has sold (the page says
+  SOLD but the listing is still online), it no longer counts as for
+  sale. The card turns grey, gets a "Sold" label and moves to the end;
+  the price stays as a reference. "Clear sold" removes them (you can
+  put them back from "Recently removed" for 30 days).
+  Vinted is now read from the item's own data (the old check stopped
+  working after a Vinted update, so sold items looked available).
+  eBay pages that say the item sold are marked too.
+- Saved items filter: All / Price drop / Sold, and a new sort
+  "Biggest price drop".
+- "Seen" marks: listings you have opened get a faded photo and a
+  "Seen" label, so new ones stand out. Can be turned off in Settings.
+- eBay prices: saved eBay listings are checked for price drops too
+  (fixed-price listings, not auctions).
+- Price spread: a small chart next to the median price shows how the
+  prices of this search are spread; the line is the median.
+- Hide listings: hover over a photo and click the eye icon next to the
+  star. Hidden listings do not show up again in searches, categories
+  or new listings. "Undo" right after, or "Show all again" in Settings.
+- Quiet hours (Watches tab, next to the notification settings): no
+  notifications during the hours you pick; afterwards one summary.
+  Off by default.
+- Shipping estimate: listings on foreign marketplaces show a rough
+  shipping cost to your country (small parcel by post, up to about
+  2 kg). Default: the Netherlands; change or turn off in Settings.
+- Weekly automatic backup to Downloads/SecondHandEurope (the latest 4
+  are kept). Because of this the extension now asks Chrome for the
+  "Manage your downloads" permission. Can be turned off in Settings.
+
+
+WHAT v1.5.4 ADDED
+-----------------
 - Price-drop alerts for saved items: when saved listings are checked,
   the price on the listing page is read too. If it dropped, you get a
   notification (old price -> new price) and the card shows the old
@@ -301,7 +335,7 @@ Good to know
 
 歐洲二手搜尋 Second Hand Europe（原名 Gear Search 二手器材搜尋）：一次搜尋歐洲各國的二手平台。
 
-最前面是 v1.5.4 的新功能（收藏降價通知、合併重複刊登、個人行情紀錄），第零部分是 v1.5.3 跟 v1.5.1 的差別（小整理），第一部分是 v1.5.1 跟 v1.5 的差別（介面整理），第二部分是 v1.5 跟 v1.4 的差別，第三部分是 v1.4 跟 v1.3 的差別，第四部分是 v1.3 跟 v1.2 的差別，第五部分是 v1.2 跟第一版 v1.0.0 比多了什麼。
+最前面是 v1.5.5 的新功能（已售出標示、看過標示、隱藏商品、勿擾時段、運費估算、自動備份），接著是 v1.5.4 的新功能（收藏降價通知、合併重複刊登、個人行情紀錄），第零部分是 v1.5.3 跟 v1.5.1 的差別（小整理），第一部分是 v1.5.1 跟 v1.5 的差別（介面整理），第二部分是 v1.5 跟 v1.4 的差別，第三部分是 v1.4 跟 v1.3 的差別，第四部分是 v1.3 跟 v1.2 的差別，第五部分是 v1.2 跟第一版 v1.0.0 比多了什麼。
 從更舊的版本更新的話，你的版本之後的每一部分都適用。
 
 怎麼更新（約 2 分鐘，收藏和追蹤都會保留）
@@ -312,10 +346,23 @@ Good to know
 2. 把新的 second-hand-europe.zip 解壓縮到別的地方。
 3. 把新資料夾裡的所有檔案複製到原本的資料夾（舊資料夾名稱不用改），問你要不要取代時選「取代」。
 4. 打開 chrome://extensions，按插件（現在叫「歐洲二手搜尋」）上的圓形重新載入箭頭。
-5. 重新打開插件。chrome://extensions 上應該顯示 1.5.4 版。
+5. 重新打開插件。chrome://extensions 上應該顯示 1.5.5 版。
 
 不要按「移除」再載入新資料夾：Chrome 會當成新的插件，收藏和追蹤就沒了。
 從 v1.2 開始，也可以先按「匯出備份」以防萬一（v1.5.1 起在側欄最底下齒輪的「設定」裡）。
+
+v1.5.5 新功能
+------------
+- 已售出標示：收藏的商品賣掉了（頁面顯示 SOLD、但還沒下架），不再當成在售。卡片變灰、標「已售出」、排到最後，價格留著當行情參考。按「清除已售出」可以清掉（30 天內可以從「最近自動移除」放回）。
+  Vinted 改讀商品本身的資料判斷（舊的判斷方式在 Vinted 改版後失效，所以賣掉的商品看起來還在賣）；eBay 頁面寫著已售出的也一樣標出。
+- 收藏篩選：可以切「全部／降價／已售出」，排序多一個「降價幅度」。
+- 看過標示：點開過的商品照片變淡、標上「看過」，重複搜尋時一眼看出哪些是新的。設定裡可以關掉。
+- eBay 價格：收藏的 eBay 商品也會檢查降價（直購商品，拍賣不算）。
+- 價格分布小圖：行情中位數旁邊一條小圖，看出這次搜尋的價格怎麼分布，直線是行情中位數。
+- 隱藏商品：滑到商品照片上，按星號旁邊的眼睛圖示。之後搜尋、分類瀏覽、新上架都不會再出現。隱藏後馬上可以按「復原」，或在設定裡「全部恢復」。
+- 勿擾時段（追蹤清單頁、通知設定那一排）：選的時段內不跳通知，結束後併成一則彙總。預設關閉。
+- 運費估算：外國平台的商品標出寄到你所在國家的大約運費（郵局小包裹、約 2 公斤以內）。預設荷蘭，設定裡可以改或關掉。
+- 每週自動備份到「下載」資料夾裡的 SecondHandEurope 資料夾（保留最近 4 份）。因為這個功能，插件會多要一個「管理下載內容」的權限。設定裡可以關掉。
 
 v1.5.4 新功能
 ------------
